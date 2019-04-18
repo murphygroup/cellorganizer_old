@@ -1,0 +1,111 @@
+CellOrganizer v2.8.0
+====================
+Features
+--------
+* Added improved model for generating protein distributions during T cell synapse formation that 
+  only requires annotation of cell couples at a single time point model and improves synapse alignment. Includes training, synthesis and info demos.
+* Added SPHARM-RPDM model for 3D cell and nuclear shapes (see https://doi.org/10.1093/bioinformatics/bty983). Includes training, synthesis and info demos.
+
+Fixes
+-----
+* Fixed issues with options.train.flag. Valid options should be nuclear, cell, framework, and protein.
+
+Enhancements
+------------
+* Modularized and cleaned up img2slml.
+* Documented mandatory and nonmandatory options for training and synthesis of all models
+* Modified PCA, SPHARM-RPDM, and T cell model options structure.
+
+
+Other
+-----
+* The following demos have been deprecated demo2D03, demo3D03, demo3D06, demo3D18, demo3D21, demo3D23, demo3D24 and demo3D27.
+
+
+CellOrganizer v2.7.2
+====================
+Features
+--------
+* Added slml2slml to combine models into a single file.
+
+Enhancements
+------------
+* Main methods slmlimg, slml2info, slml2report and img2slml have been optimized for the release of CellOrganizer for Galaxy tools.
+
+CellOrganizer v2.7.1
+====================
+Features
+--------
+* Created method slml2info to replace model2info. The method creates a report with useful information from a model file. Method writes report with Matlab Publisher. When method is deployed, then it generates a report in Markdown.
+* Created method slml2report. The method creates a report comparing two model files. Method writes report with Matlab Publisher. When method is deployed, then it generates a report in Markdown.
+* Created demos demo2D08 and demo2D09 to show how to make a report from a PCA framework model.
+
+Enhancements
+------------
+* Main methods slml2img, slml2info, slml2report and img2slml have been optimized for Matlab Compiler for release with CellOrganizer for Docker.
+
+Fixes
+-----
+* Fixed problem with demo3D46. Unable to synthesize image from CSGO model when combined with a vesicle model.
+
+CellOrganizer v2.7.0
+====================
+Features
+--------
+* Included new model class/type: constructive_geometry/half-ellipsoid
+* Included new model class/type: framework/pca
+* Included support for OME.TIFF with regions of interest
+* Included bash scripts to run demos from compiled versions of the main functions
+
+Enhancements
+------------
+* img2slml now checks the combination of model class and type for every submodel before attempting to extract parameters from image 
+* Improved pipeline so that CellOrganizer will stop computation and report to user if no images are found in the path or if software fails to extract parameters.
+* Added demo3D44 to show how to synthesize from a model class/type constructive_geomertry/half-ellipsoid
+* Added a battery of unit test for demos using Matlab testing framework
+* Added demo3D45 to show how to use OME.TIFF files with ROIs.
+* Added demo2D05, demo2D06, demo2D07 to show how to train and synthesize from a classtype framework/pca model
+
+CellOrganizer v2.6.0
+====================
+Features
+--------
+* SBML Spatial 3 Level 1 draft 0.90 support. Included a new synthesis output option named 'SBMLSpatial3' that saves a 
+synthetic image as an SBML instance.
+* OME-TIFF support. Included a new synthesis output options named 'OMETIFF' that saves a synthetic image as an OME-TIFF 
+Bioformats.
+* T cell models. Included a new model class/type called "soluble"/"standardized-map half-ellipsoid" which is used to model the protein distribution of T cell movies, given annotation of the synapse. 
+
+Enhancements
+------------
+* Included a new synthesis option named 'overwrite_synthetic_instances' that allows the user to to stop and resume
+synthesis of large image collection without overwriting existing images.
+* Included demo3D34 to show how to use new synthesis output options 'SBMLSpatial3' and 'OMETIFF'.
+* Included demo3Dtcell_train to show how to train a T cell model.
+* Included demo3Dtcell_synth to show how to synthesize protein distribution from cell shape and t cell model. 
+
+CellOrganizer v2.5.2
+====================
+* Fixed issues with demo3D04 to demo3D07 due to nonexistent field.
+* Centrosome model class and type has been update to reflect refactoring.
+* Adjusted directory path for demo3D20.
+* Updated 2D and 3D demos to match documentation.
+* Fixed error in demo3D15 where synthetic images were empty.
+
+CellOrganizer v2.5.1
+====================
+* Models have been retrained and reflect CellOrganizer?s updated model structure.
+* Demos now have consistent documentation of both outputs and options.
+* Demos have been been simplified to improve performance of public tests.
+* Errors in diffeomorphic training and synthesis have been resolved by updating the model in the release.
+* Failure in demo3D23 image extraction has been fixed.
+* Fixed model name in demo3D30.
+* The following demos have been refactored and verified: demo3D02, demo3D06, demo3D07, demo3D08, demo3D09, demo3D10, demo3D13, demo3D14, demo3D15, demo3D16, demo3D18, demo3D19, demo3D21, demo3D22, demo3D23, demo3D24, demo3D25, demo3D26 and demo3D27.
+
+CellOrganizer v2.5
+==================
+* Refactored the process by which images are converted to parameterizations to improve performance and facilitate adding new models.
+* Refactored and simplified demos to make it easier to use as templates for user scripts.
+* Included methods to download Murphy Lab 2D/3D HeLa and 3D 3T3 image collections rather than downloading them each time demos run. 
+* Faster training and synthesis for 3D diffeomorphic models.
+* Miscellaneous bug fixes and performance improvements.

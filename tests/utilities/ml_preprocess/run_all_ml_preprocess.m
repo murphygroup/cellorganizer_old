@@ -1,0 +1,10 @@
+disp('Tests for preprocess');
+s_ml_preprocess_001;
+s_ml_preprocess_002;
+s_ml_preprocess_003;
+s_ml_preprocess_004;
+s_ml_preprocess_005;
+s_ml_preprocess_006;
+s_ml_preprocess_007;
+s_ml_preprocess_008;
+s_ml_preprocess_009;
