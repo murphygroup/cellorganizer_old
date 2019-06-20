@@ -83,6 +83,9 @@ function [object, outres] = model2instance( model, param )
 % 
 % February 5, 2017 I. Cao-Berg Modified function so that microtubules patterns
 %                  remain grayscale after adjusting resolution
+% 
+% May 21, 2019 Xiongtao Ruan Added matching of resolutions of mesh
+
 
 object = [];
 outres=[];
@@ -212,6 +215,14 @@ switch lower(dimensionality)
                         param.cell = AdjustResolutions(param.cell,param.resolution.cell,param.resolution.cubic);
                         param.nucleus = AdjustResolutions(param.nucleus,param.resolution.cell,param.resolution.cubic);
                         
+                        % xruan 05/21/2019 change resolution for mesh
+                        if isfield(param, 'nucmesh')
+                            param.nucmesh.vertices = param.nucmesh.vertices .* (param.resolution.cell ./ param.resolution.cubic);
+                        end
+                        if isfield(param, 'cellmesh')
+                            param.cellmesh.vertices = param.cellmesh.vertices .* (param.resolution.cell ./ param.resolution.cubic);
+                        end
+
                         %We will also need to re-comput the distance images
                         %now - copy pasta from model2img
                         %                     fprintf( 1, '%s\n', ['Computing Euclidean distance transform to cell and nuclear edges'] );

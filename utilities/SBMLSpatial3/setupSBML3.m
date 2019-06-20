@@ -1,23 +1,28 @@
-function [docNode,docRootNode,wrapperNode,GeowrapperNode] = setupSBML3(SBMLfile,param)
+function [docNode,docRootNode,wrapperNode,GeowrapperNode] = setupSBML3(CSGdata,meshData,models,imgs,SBMLfile,param,options)
 
 %D. Sullivan 9/10/14 - This is a flag to determine if we will create
 %compartments in the xml file. If false, no compartments are created - this
 %is not recommended for cases when using the model for simulation. If there
 %is an SBML file already being appended to it will have the appropriate
 %compartments.
-addCompartments = 0;
+addCompartments = true;
 
 %D. Sullivan 9/10/14 - how many dimensions do you have?
 %D. Sullivan 9/11/14 added param structure to make initialization easier
 ndim = param.ndim;
 s = param.prefix;
 
+img_size = size(imgs{1});
+resolution_ijk = meshData.resolution([2,1,3]);
+img_size_real = img_size .* resolution_ijk;
+
 if(ischar(SBMLfile))
     docNode = xmlread(SBMLfile);
     docRootNode = docNode.getDocumentElement;
+    docRootNode = XMLremoveWhitespaceNodes(docRootNode);
     allListitems = docNode.getElementsByTagName('model');
     wrapperNode = allListitems.item(0);
-    allListitems = wrapperNode.getElementsByTagName('compartment');
+    allListitems = wrapperNode.getElementsByTagName('listOfCompartments');
     ListOfCompartments = allListitems.item(0);
     %If we've already defined the compartment list in the SBML file, no
     %need to re-do it.
@@ -28,7 +33,7 @@ if(ischar(SBMLfile))
     end
     %     wrapperNode = docNode.createElement('model');
     %     wrapperNode = docRootNode.getAttribute('model');
-else SBMLfile == 1
+else
     %Create initial Node Object
     docNode = com.mathworks.xml.XMLUtils.createDocument('sbml');
     %Create Root node and define the namespace for SBML-Spatial
@@ -66,57 +71,172 @@ docRootNode.setAttribute('version', '1');
 docRootNode.setAttribute('xmlns:spatial','http://www.sbml.org/sbml/level3/version1/spatial/version1');
 docRootNode.setAttribute([s,'required'],'true');
 
-% wrapperNode.setAttribute('id','CellOrganizer2_0');
-% wrapperNode.setAttribute('name',['CellOrganizer2_0',CSGdata.name]);
+wrapperNode.setAttribute('id','CellOrganizer2_7');
+% wrapperNode.setAttribute('name',['CellOrganizer2_7',CSGdata.name]);
+wrapperNode.setAttribute('name','CellOrganizer2_7');
+wrapperNode.setAttribute('lengthUnits','um');
+wrapperNode.setAttribute('areaUnits','um2');
+wrapperNode.setAttribute('volumeUnits','um3');
+wrapperNode.setAttribute('timeUnits','s');
+wrapperNode.setAttribute('substanceUnits','molecules');
+
+
+%Define units
+%list
+ListOfUnitDefinitions = docNode.createElement('listOfUnitDefinitions');
+%substance
+% UnitDefinition = docNode.createElement('unitDefinition');
+%UnitDefinition.setAttribute('id','substance');
+% ListOfUnits = docNode.createElement('listOfUnits');
+%unit = docNode.createElement('unit');
+%unit.setAttribute('kind','mole');
+%unit.setAttribute('exponent','1');
+%unit.setAttribute('scale','0');
+%unit.setAttribute('multiplier','1e-09');
+%ListOfUnits.appendChild(unit);
+%UnitDefinition.appendChild(ListOfUnits);
+% ListOfUnitDefinitions.appendChild(UnitDefinition);
+UnitDefinition = docNode.createElement('unitDefinition');
+UnitDefinition.setAttribute('id','molecules');
+ListOfUnits = docNode.createElement('listOfUnits');
+unit = docNode.createElement('unit');
+unit.setAttribute('kind','item');
+unit.setAttribute('exponent','1');
+unit.setAttribute('scale','0');
+unit.setAttribute('multiplier','1');
+ListOfUnits.appendChild(unit);
+UnitDefinition.appendChild(ListOfUnits);
+ListOfUnitDefinitions.appendChild(UnitDefinition);
+%volume
+UnitDefinition = docNode.createElement('unitDefinition');
+UnitDefinition.setAttribute('id','um3');
+ListOfUnits = docNode.createElement('listOfUnits');
+unit = docNode.createElement('unit');
+unit.setAttribute('kind','metre');
+unit.setAttribute('exponent','3');
+unit.setAttribute('scale','-6');
+unit.setAttribute('multiplier','1');%'0.1');
+ListOfUnits.appendChild(unit);
+UnitDefinition.appendChild(ListOfUnits);
+ListOfUnitDefinitions.appendChild(UnitDefinition);
+%area
+UnitDefinition = docNode.createElement('unitDefinition');
+UnitDefinition.setAttribute('id','um2');
+ListOfUnits = docNode.createElement('listOfUnits');
+unit = docNode.createElement('unit');
+unit.setAttribute('kind','metre');
+unit.setAttribute('exponent','2');
+unit.setAttribute('scale','-6');
+unit.setAttribute('multiplier','1');
+ListOfUnits.appendChild(unit);
+UnitDefinition.appendChild(ListOfUnits);
+ListOfUnitDefinitions.appendChild(UnitDefinition);
+%length
+UnitDefinition = docNode.createElement('unitDefinition');
+UnitDefinition.setAttribute('id','um');
+ListOfUnits = docNode.createElement('listOfUnits');
+unit = docNode.createElement('unit');
+unit.setAttribute('kind','metre');
+unit.setAttribute('exponent','1');
+unit.setAttribute('scale','-6');
+unit.setAttribute('multiplier','1');
+ListOfUnits.appendChild(unit);
+UnitDefinition.appendChild(ListOfUnits);
+ListOfUnitDefinitions.appendChild(UnitDefinition);
+%time
+UnitDefinition = docNode.createElement('unitDefinition');
+UnitDefinition.setAttribute('id','s');
+ListOfUnits = docNode.createElement('listOfUnits');
+unit = docNode.createElement('unit');
+unit.setAttribute('kind','second');
+unit.setAttribute('exponent','1');
+unit.setAttribute('scale','0');
+unit.setAttribute('multiplier','1');
+ListOfUnits.appendChild(unit);
+UnitDefinition.appendChild(ListOfUnits);
+ListOfUnitDefinitions.appendChild(UnitDefinition);
+%nmol
+% UnitDefinition = docNode.createElement('unitDefinition');
+% UnitDefinition.setAttribute('id','nmol');
+% ListOfUnits = docNode.createElement('listOfUnits');
+% unit = docNode.createElement('unit');
+% unit.setAttribute('kind','mole');
+% unit.setAttribute('exponent','1');
+% unit.setAttribute('scale','0');
+% unit.setAttribute('multiplier','1e-09');
+% ListOfUnits.appendChild(unit);
+% UnitDefinition.appendChild(ListOfUnits);
+% ListOfUnitDefinitions.appendChild(UnitDefinition);
+% docRootNode.appendChild(ListOfUnitDefinitions);
+wrapperNode.appendChild(ListOfUnitDefinitions);
+%%%
+
+%%%
+% if listedCompartments == 0
+%     ListOfCompartments = docNode.createElement('listOfCompartments');
+% end
+%%%
 
 %%%Set up the Geometry node
-    GeowrapperNode = docNode.createElement('spatial:geometry');
-    GeowrapperNode.setAttribute([s,'coordinateSystem'],'cartesian');
-    
-    %Define compartments
-    %list
-    if listedCompartments==0 && addCompartments == 1
-        ListOfCompartments = docNode.createElement('listOfCompartments');
-        compartmentlistCSG = [];
-        compartmentlistMesh = [];
-        if ~isempty(CSGdata)
-            compartmentlistCSG = unique(extractfield(CSGdata.list,'name'));
-        end
-        if ~isempty(Meshdata)
-            compartmentlistMesh = unique(extractfield(Meshdata.list,'name'));
-        end
-        compartmentlist = unique([compartmentlistCSG,compartmentlistMesh]);
-        %extract compartment information
-        for j = 1:length(compartmentlist)
-            %actual compartment
-            compartment = docNode.createElement('compartment');
-%             dicomWrapper = num2str(dicomuid());
-%             dicomWrapper = strrep(dicomWrapper, '.', '');
-            %         compartment.setAttribute('metaid',dicomWrapper);
-            compartment.setAttribute('id',compartmentlist{j});%CSGdata.class);
-            compartment.setAttribute('name',compartmentlist{j});%CSGdata.class);
-            compartment.setAttribute('spatialDimensions','3');
-            compartment.setAttribute('size','50000');
-            compartment.setAttribute('units','um3');%'m');
-            compartment.setAttribute('constant','true');
-            %compartment mapping
-            mapping = docNode.createElement([s,'compartmentMapping']);
-            mapping.setAttribute([s,'id'],[compartmentlist{j},compartmentlist{j}]);%[DomainID,CSGdata.class]);
-            mapping.setAttribute([s,'compartment'],compartmentlist{j});%[CSGdata.class]);
-            mapping.setAttribute([s,'domainType'],compartmentlist{j});%DomainID);
-            mapping.setAttribute([s,'unitSize'],'1');
-            %add children node
-            compartment.appendChild(mapping);
-            %         ListOfCompartments.appendChild(compartment);
-            
-            %add annotation
-            annotation = addAnnotation(docNode);
-            compartment.appendChild(annotation);
-            ListOfCompartments.appendChild(compartment);
-        end
-        wrapperNode.appendChild(ListOfCompartments);
-        
+GeowrapperNode = docNode.createElement('spatial:geometry');
+GeowrapperNode.setAttribute([s,'coordinateSystem'],'cartesian');
+
+%Define compartments
+%list
+if listedCompartments==0 && addCompartments
+    ListOfCompartments = docNode.createElement('listOfCompartments');
+    compartmentlistCSG = [];
+    compartmentlistMesh = [];
+
+    if ~isempty(CSGdata)
+        % compartmentlistCSG = unique(extractfield(CSGdata.list,'name'));
+        compartmentlistCSG = fieldnames(CSGdata);
     end
+    if ~isempty(meshData)
+        compartmentlistMesh = unique(extractfield(meshData.list,'name'));
+    end
+    compartmentlist = unique([squeeze(compartmentlistCSG(:));squeeze(compartmentlistMesh(:))]);
+    %extract compartment information
+    for j = 1:length(compartmentlist)
+        %actual compartment
+        compartment = docNode.createElement('compartment');
+        % dicomWrapper = num2str(dicomuid());
+        % dicomWrapper = strrep(dicomWrapper, '.', '');
+        % compartment.setAttribute('metaid',dicomWrapper);
+        compartment.setAttribute('id',compartmentlist{j});%CSGdata.class);
+        compartment.setAttribute('name',compartmentlist{j});%CSGdata.class);
+        compartment.setAttribute('spatialDimensions','3');
+        compartment.setAttribute('size','50000');
+        compartment.setAttribute('units','um3');%'m');
+        compartment.setAttribute('constant','true');
+        %compartment mapping
+        mapping = docNode.createElement([s,'compartmentMapping']);
+        mapping.setAttribute([s,'id'],[compartmentlist{j},compartmentlist{j}]);%[DomainID,CSGdata.class]);
+        % Does not pass SBML validator
+        if options.output.SBMLSpatialVCellCompatible
+            mapping.setAttribute('id',mapping.getAttribute([s,'id']))
+        end;
+        % Does not pass SBML validator
+        if options.output.SBMLSpatialVCellCompatible
+            mapping.setAttribute([s,'compartment'],compartmentlist{j});%[CSGdata.class]);
+        end;
+        mapping.setAttribute([s,'domainType'],[compartmentlist{j},'_domainType']);%DomainID);
+        mapping.setAttribute([s,'unitSize'],'1');
+        %add children node
+        compartment.appendChild(mapping);
+        %         ListOfCompartments.appendChild(compartment);
+        
+        %{
+        %add annotation
+        annotation = addAnnotation(docNode);
+        compartment.appendChild(annotation);
+        %}
+        
+        ListOfCompartments.appendChild(compartment);
+    end
+    wrapperNode.appendChild(ListOfCompartments);
+    
+end
     
     
     
@@ -158,45 +278,64 @@ docRootNode.setAttribute([s,'required'],'true');
     %add compartments to model
     % docRootNode.appendChild(ListOfCompartments);
 %     wrapperNode.appendChild(ListOfCompartments);
+
+%add Species field to the files - this doesn't currently add real
+%values, it is only there for demonstration. CellOrganizer doesn't
+%currently support the specification of species
+addspecs = 0;
+if addspecs==1
+    listOfSpecies = addSpecies(docNode);
+    wrapperNode.appendChild(listOfSpecies);
+end
+
+%Add listOfInitialAssignments
+initAssign = 0;
+if initAssign == 1
+    listOfInitialAssignments = addInitAssign(docNode);
+    wrapperNode.appendChild(listOfInitialAssignments);
+end
     
-    %add Species field to the files - this doesn't currently add real
-    %values, it is only there for demonstration. CellOrganizer doesn't
-    %currently support the specification of species
-    addspecs = 0;
-    if addspecs==1
-        listOfSpecies = addSpecies(docNode);
-        wrapperNode.appendChild(listOfSpecies);
+%%%Set up the ListOfCoordinateComponent node
+ListOfCoordCompNode = docNode.createElement([s,'listOfCoordinateComponents']);
+%for each dimension
+dimensionNames = ['x','y','z'];
+for i = 1:ndim
+    CoordCompNode = docNode.createElement([s,'coordinateComponent']);
+    CoordCompNode.setAttribute([s,'id'],dimensionNames(i));
+    % Does not pass SBML validator
+    if options.output.SBMLSpatialVCellCompatible
+        CoordCompNode.setAttribute('id',CoordCompNode.getAttribute([s,'id']))
+    end;
+    CoordCompNode.setAttribute([s,'type'],['cartesian',upper(dimensionNames(i))]);
+    CoordCompNode.setAttribute([s,'unit'],'um');
+    
+    %define dimensions
+    minNode = docNode.createElement([s,'boundaryMin']);
+    minNode.setAttribute([s,'id'],[upper(dimensionNames(i)),'min']);
+    % Does not pass SBML validator
+    if options.output.SBMLSpatialVCellCompatible
+        minNode.setAttribute('id',minNode.getAttribute([s,'id']))
+    end;
+    minNode.setAttribute([s,'value'],'0');
+    CoordCompNode.appendChild(minNode);
+    maxNode = docNode.createElement([s,'boundaryMax']);
+    maxNode.setAttribute([s,'id'],[upper(dimensionNames(i)),'max']);
+    % Does not pass SBML validator
+    if options.output.SBMLSpatialVCellCompatible
+        maxNode.setAttribute('id',maxNode.getAttribute([s,'id']))
+    end;
+    switch dimensionNames(i)
+        case 'x'
+            maxNode.setAttribute([s,'value'], num2str(img_size_real(2)));
+        case 'y'
+            maxNode.setAttribute([s,'value'], num2str(img_size_real(1)));
+        case 'z'
+            maxNode.setAttribute([s,'value'], num2str(img_size_real(3)));
     end
-   
-    %Add listOfInitialAssignments
-    initAssign = 0;
-    if initAssign == 1
-       listOfInitialAssignments = addInitAssign(docNode);
-       wrapperNode.appendChild(listOfInitialAssignments);
-    end
-        
-    %%%Set up the ListOfCoordinateComponent node
-    ListOfCoordCompNode = docNode.createElement([s,'listOfCoordinateComponents']);
-    %for each dimension
-    dimensionNames = ['x','y','z'];
-    for i = 1:ndim
-        CoordCompNode = docNode.createElement([s,'coordinateComponent']);
-        CoordCompNode.setAttribute([s,'id'],dimensionNames(i));
-        CoordCompNode.setAttribute([s,'type'],['cartesian',upper(dimensionNames(i))]);
-        CoordCompNode.setAttribute([s,'unit'],'m');
-        
-        %define dimensions
-        minNode = docNode.createElement([s,'boundaryMin']);
-        minNode.setAttribute([s,'id'],[upper(dimensionNames(i)),'min']);
-        minNode.setAttribute([s,'value'],'-10');
-        CoordCompNode.appendChild(minNode);
-        maxNode = docNode.createElement([s,'boundaryMax']);
-        maxNode.setAttribute([s,'id'],[upper(dimensionNames(i)),'max']);
-        maxNode.setAttribute([s,'value'],'10');
-        CoordCompNode.appendChild(maxNode);
-        
-        %add component to the list
-        ListOfCoordCompNode.appendChild(CoordCompNode);
-    end
-    GeowrapperNode.appendChild(ListOfCoordCompNode);
-    %%%
+    CoordCompNode.appendChild(maxNode);
+    
+    %add component to the list
+    ListOfCoordCompNode.appendChild(CoordCompNode);
+end
+GeowrapperNode.appendChild(ListOfCoordCompNode);
+%%%

@@ -3,10 +3,9 @@ function setup( force )
 %compatible. If force flag is set to true, then it will load CellOrganizer
 %even if system is not compatible.
 
-% Author: Ivan E. Cao-Berg (icaoberg@cmu.edu)
-% Created: November 24, 2008
+% Ivan E. Cao-Berg (icaoberg@cmu.edu)
 %
-% Copyright (C) 2008-2018 Murphy Lab
+% Copyright (C) 2008-2019 Murphy Lab
 % Lane Center for Computational Biology
 % School of Computer Science
 % Carnegie Mellon University
@@ -28,29 +27,6 @@ function setup( force )
 %
 % For additional information visit http://murphylab.web.cmu.edu or
 % send email to murphy@cmu.edu
-
-% March 14, 2012 icaoberg Made it sure that .git folder is not added to
-%                path just in case they use the git clone
-%
-% March 19, 2012 murphy Fix addpaths
-%
-% March 27, 2012 icaoberg Turned script into function
-%
-% April 11, 2012 murphy Support two digit sub- and sub-subversions
-%
-% October 2, 2012 icaoberg Ignore licenses folder from working path
-%
-% May 7, 2013 icaoberg Updated method to include loading of Bio-formats
-%
-% March 11, 2013 icaoberg Updated method so that removes the paths if
-% CellOrganizer is not compatible
-%
-% February 3, 2015 icaoberg Added force flag that will load
-% CellOrganizer even if system is not compatible
-%
-% February 10, 2015 icaoberg Suppressed naming conflict warning
-%
-% March 1, 2018 icaoberg Enabled logging for BioFormats
 
 %icaoberg 2/3/2015
 if ~exist( 'force', 'var' )
@@ -80,7 +56,7 @@ if ~is_it_compatible_with_cellorganizer()
     end
 end
 
-version = '2.8.0';
+version = '2.8.1';
 versionURL = 'http://murphylab.web.cmu.edu/software/CellOrganizer/version';
 
 try
@@ -104,6 +80,7 @@ javaaddpath( [ pwd filesep ...
 
 %enable logging
 loci.common.DebugTools.enableLogging('INFO');
+
 end%setup
 
 function answer = upgrade( version, latestVersion )

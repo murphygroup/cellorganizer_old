@@ -1,4 +1,4 @@
-function [ result ] = instance2SBML3_mod( CSGdata, meshData, savepath, SBMLfile,resolution, options )
+function [ result ] = instance2SBML3_mod( CSGdata, meshData, models, imgs, savepath, SBMLfile,mesh_resolution, options )
 %INSTANCE2SBML Writes data struct to a SBML-Spatial file. If an existing file is provided
 %this method will append to the end of the file.
 %
@@ -62,8 +62,8 @@ if nargin<4
     SBMLfile = 1;
 end
 
-if nargin<5
-    resolution = [1,1,1];
+if nargin<7
+    mesh_resolution = [1,1,1];
 end
 
 if isempty(SBMLfile)
@@ -81,17 +81,36 @@ if ~isempty(CSGdata) && ~isempty(meshData)
     param.mixed = 1;
 end
 
+if ~isempty(meshData)
+    meshData.resolution = mesh_resolution;
+end
+
 s = 'spatial:';
-[docNode,docRootNode,wrapperNode,GeowrapperNode] = setupSBML3(SBMLfile,param);
+[docNode,docRootNode,wrapperNode,GeowrapperNode] = setupSBML3(CSGdata,meshData,models,imgs, SBMLfile,param,options);
 
 %%%Define the Geometry
 if ~isempty(CSGdata) && ~isempty(meshData)
-    %this is a "mixed" case
-    geometryDefNodeParent = docNode.createElement([param.prefix,'listOfGeometryDefinitions']);
-    geometryDefNodeMixed = docNode.createElement([param.prefix, 'mixedGeometry']);
-    geometryDefNodeMixed.setAttribute([s,'id'],['id' sprintf('%03d',num2str(randi([0 10000000]),1))]);
-    geometryDefNodeMixed.setAttribute([s,'isActive'],'true');
-    geometryDefNode = docNode.createElement([param.prefix, 'listOfGeometryDefinitions']);
+    if options.output.SBMLSpatialImage
+        geometryDefNodeParent = docNode.createElement([param.prefix,'listOfGeometryDefinitions']);
+        %{
+        geometryDefNodeSampledFieldGeometry = docNode.createElement([param.prefix, 'sampledFieldGeometry']);
+        geometryDefNodeSampledFieldGeometry.setAttribute([s,'id'],['id' sprintf('%03d',num2str(randi([0 10000000]),1))]);
+        geometryDefNodeSampledFieldGeometry.setAttribute('id',geometryDefNodeSampledFieldGeometry.getAttribute([s,'id']));
+        geometryDefNodeSampledFieldGeometry.setAttribute([s,'isActive'],'true');
+        geometryDefNode = docNode.createElement([param.prefix, 'listOfSampledVolumes']);
+        %}
+    else
+        %this is a "mixed" case
+        geometryDefNodeParent = docNode.createElement([param.prefix,'listOfGeometryDefinitions']);
+        geometryDefNodeMixed = docNode.createElement([param.prefix, 'mixedGeometry']);
+        geometryDefNodeMixed.setAttribute([s,'id'],['id' sprintf('%03d',num2str(randi([0 10000000]),1))]);
+        % Does not pass SBML validator
+        if options.output.SBMLSpatialVCellCompatible
+            geometryDefNodeMixed.setAttribute('id',geometryDefNodeMixed.getAttribute([s,'id']))
+        end;
+        geometryDefNodeMixed.setAttribute([s,'isActive'],'true');
+        geometryDefNode = docNode.createElement([param.prefix, 'listOfGeometryDefinitions']);
+    end
 else
     geometryDefNode = docNode.createElement([param.prefix,'listOfGeometryDefinitions']);
 end
@@ -100,12 +119,25 @@ ordinals = [];
 domainlist = {};
 objs = {};
 
-if ~isempty(CSGdata)
-    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = addCSGObjects3(CSGdata,docNode,geometryDefNode,GeowrapperNode,wrapperNode);
+%%%Set up the ListOfDomainTypes node
+ListOfDomainTypesNode = docNode.createElement([s,'listOfDomainTypes']);
+GeowrapperNode.appendChild(ListOfDomainTypesNode);
+ListOfDomains = docNode.createElement([s,'listOfDomains']);
+GeowrapperNode.appendChild(ListOfDomains);
+
+if ~isempty(CSGdata) && ~options.output.SBMLSpatialImage
+    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = addCSGObjects3(CSGdata,docNode,geometryDefNode,GeowrapperNode,wrapperNode,options);
     %Add surface area and volume for the class of the same "name" aka domainType
     
     %grab the ordinals
     domainlist = fieldnames(CSGdata);
+    domainlist2 = {};
+    for i = 1:length(domainlist)
+        if ~strcmp(domainlist{i}, 'primitiveOnly')
+            domainlist2{end+1} = domainlist{i};
+        end
+    end
+    domainlist = domainlist2;
     for i = 1:length(domainlist)
         ordinals(i) = CSGdata.(domainlist{i}).ordinal;
         objs{i} = CSGdata.(domainlist{i}).list;
@@ -117,10 +149,20 @@ end
 %D. Sullivan 9/10/14  - added "primitiveOnly" for fast computations here
 if (~isfield(CSGdata,'primitiveOnly') || CSGdata.primitiveOnly==0) && ...
         ~isempty(meshData)
-    meshData.resolution = resolution;
-    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = ...
-        addMeshObjects3(meshData,docNode,geometryDefNode, ...
-        GeowrapperNode,wrapperNode, options);
+    if options.output.SBMLSpatialImage
+        % Write image data (for import into Virtual Cell):
+        % [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = ...
+            % addImageObjects3(meshData,docNode,models,imgs,geometryDefNode, ...
+            % GeowrapperNode,wrapperNode, options);
+        [docNode,GeowrapperNode,geometryDefNodeParent,wrapperNode] = ...
+            addImageObjects3(CSGdata,meshData,docNode,models,imgs,geometryDefNodeParent, ...
+            GeowrapperNode,wrapperNode, options);
+    else
+        % Write mesh data (doesn't work when imported into Virtual Cell):
+        [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = ...
+            addMeshObjects3(meshData,docNode,geometryDefNode, ...
+            GeowrapperNode,wrapperNode, options);
+    end
     
     for i = 1:length(meshData.list)
         domainlist{end+1} = meshData.list(i).name;
@@ -157,6 +199,10 @@ for j=1:length(ordinal_list)-1
                     %             link_type = link_object(i).type;
                     AdjacentDomainNode = docNode.createElement([s,'adjacentDomains']);
                     AdjacentDomainNode.setAttribute([s,'id'],[start_name,'_',link_name]);
+                    % Does not pass SBML validator
+                    if options.output.SBMLSpatialVCellCompatible
+                        AdjacentDomainNode.setAttribute('id',AdjacentDomainNode.getAttribute([s,'id']))
+                    end;
                     AdjacentDomainNode.setAttribute([s,'domain1'],start_name);
                     AdjacentDomainNode.setAttribute([s,'domain2'],link_name);
                     ListOfAdjacentDomains.appendChild(AdjacentDomainNode);
@@ -166,7 +212,9 @@ for j=1:length(ordinal_list)-1
     end
     
 end
-GeowrapperNode.appendChild(ListOfAdjacentDomains);
+if ListOfAdjacentDomains.getChildNodes().getLength() > 0
+    GeowrapperNode.appendChild(ListOfAdjacentDomains);
+end
 
 %%%
 %%%Append all the children nodes and save the file
@@ -175,21 +223,69 @@ GeowrapperNode.appendChild(ListOfAdjacentDomains);
 % GeowrapperNode.appendChild(geometryDefNode);
 if ~isempty(CSGdata) && ~isempty(meshData)
     %this is a "mixed" case
-    geometryDefNodeMixed.appendChild(geometryDefNode);
-    geometryDefNodeParent.appendChild(geometryDefNodeMixed);
-    %do ordinal mapping:
-    ListOfOrdinalMapping = docNode.createElement([param.prefix,'listOfOrdinalMappings']);
-    OrdinalMapping = docNode.createElement([param.prefix,'ordinalMappings']);
-    
-    GeowrapperNode.appendChild(geometryDefNodeParent);
+    if options.output.SBMLSpatialImage
+        %{
+        geometryDefNodeSampledFieldGeometry.appendChild(geometryDefNode);
+        geometryDefNodeParent.appendChild(geometryDefNodeSampledFieldGeometry);
+        %}
+        
+        %{
+        %do ordinal mapping:
+        ListOfOrdinalMapping = docNode.createElement([param.prefix,'listOfOrdinalMappings']);
+        OrdinalMapping = docNode.createElement([param.prefix,'ordinalMappings']);
+        %}
+        
+        GeowrapperNode.appendChild(geometryDefNodeParent);
+    else
+        geometryDefNodeMixed.appendChild(geometryDefNode);
+        geometryDefNodeParent.appendChild(geometryDefNodeMixed);
+        %do ordinal mapping:
+        ListOfOrdinalMapping = docNode.createElement([param.prefix,'listOfOrdinalMappings']);
+        OrdinalMapping = docNode.createElement([param.prefix,'ordinalMappings']);
+        
+        GeowrapperNode.appendChild(geometryDefNodeParent);
+    end
 else
     GeowrapperNode.appendChild(geometryDefNode);
 end
 
 wrapperNode.appendChild(GeowrapperNode);
+
+% Rearrange spatial:geometry children
+elements_to_rearrange = {};
+elements_to_rearrange{end+1} = 'listOfAdjacentDomains';
+elements_to_rearrange{end+1} = 'listOfCoordinateComponents';
+elements_to_rearrange{end+1} = 'listOfDomains';
+elements_to_rearrange{end+1} = 'listOfDomainTypes';
+elements_to_rearrange{end+1} = 'listOfGeometryDefinitions';
+elements_to_rearrange{end+1} = 'listOfSampledFields';
+for i = 1:length(elements_to_rearrange)
+    element_name = [s, elements_to_rearrange{i}];
+    element = GeowrapperNode.getElementsByTagName(element_name);
+    if element.getLength() > 0
+        element = element.item(0);
+        GeowrapperNode.appendChild(GeowrapperNode.removeChild(element));
+    end
+end
+
+% Rearrange model children
+elements_to_rearrange = {};
+elements_to_rearrange{end+1} = 'listOfUnitDefinitions';
+elements_to_rearrange{end+1} = 'listOfCompartments';
+elements_to_rearrange{end+1} = 'listOfParameters';
+for i = 1:length(elements_to_rearrange)
+    element_name = elements_to_rearrange{i};
+    element = wrapperNode.getElementsByTagName(element_name);
+    if element.getLength() > 0
+        element = element.item(0);
+        wrapperNode.appendChild(wrapperNode.removeChild(element));
+    end
+end
+
 % docRootNode.appendChild(GeowrapperNode);
 docRootNode.appendChild(wrapperNode);
 xmlwrite(savepath, docNode);
+zip([savepath, '.zip'], savepath);
 
 result = 1;
 end

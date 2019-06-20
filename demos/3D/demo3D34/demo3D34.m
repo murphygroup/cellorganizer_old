@@ -42,6 +42,9 @@ function answer = demo3D34( options )
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DO NOT MODIFY THIS BLOCK
+start_time = tic;
+start_cputime = cputime;
+
 if ~isdeployed()
   current_path = which(mfilename);
   [current_path, filename, extension] = fileparts( current_path );
@@ -86,4 +89,11 @@ list_of_models = {'../../../models/3D/tfr.mat'};
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 answer = slml2img( list_of_models, options );
+
+[sbml_valid, sbml_problems] = validate_SBML_instance('./img/cell1/cell.xml', true)
+
+elapsed_time = toc(start_time);
+elapsed_cputime = cputime - start_cputime;
+fprintf('\n%s took %.3f s (%.3f s CPU time)\n\n', mfilename, elapsed_time, elapsed_cputime);
+
 end%demo3D34

@@ -4,7 +4,9 @@ function [nucimg,cellimg] = tp_genshapes(index)
 load('./inter_results/nuc_shape_spline/nuc_shape_model')
 disp('Generating nuclei shape ...')
 instance = tp_genspsurf(model);
-[nucimg,nucsurf] = tp_gennucshape(instance);
+tp_gennucshape_result = tp_gennucshape(instance);
+nucimg = tp_gennucshape_result.nucimg;
+nucsurf = tp_gennucshape_result.nucsurf;
 nuclei.nucimgsize = size(nucimg);
 nuclei.nucsurf = nucsurf;
 

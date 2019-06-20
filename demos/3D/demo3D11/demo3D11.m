@@ -2,9 +2,9 @@ function answer = demo3D11( options )
 % demo3D11
 %
 % Train 3D generative model of the cell framework (nucleus and cell shape)
-% using the Murphy Lab 3D HeLa TfR dataset.
+% using the Murphy Lab 3D HeLa LAMP2+TfR dataset.
 %
-% Input 
+% Input
 % -----
 % * a directory of raw or synthetic nucleus images
 % * a directory of raw or synthetic cell shape images
@@ -17,7 +17,7 @@ function answer = demo3D11( options )
 
 % Ivan E. Cao-Berg
 %
-% Copyright (C) 2012-2018 Murphy Lab
+% Copyright (C) 2012-2019 Murphy Lab
 % Computational Biology Department
 % School of Computer Science
 % Carnegie Mellon University
@@ -50,7 +50,7 @@ function answer = demo3D11( options )
 % options.model.resolution and options.downsampling if the flag
 % options.use_preprocessed_images is set to true
 %
-% February 16, 2017 @icaoberg Changed demo to use a single pattern from the 
+% February 16, 2017 @icaoberg Changed demo to use a single pattern from the
 % 3D HeLa dataset instead of the whole collection
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -63,7 +63,7 @@ if ~isdeployed()
 end
 
 disp( 'demo3D11' );
-disp( 'The estimated running time is 10 seconds. Please wait.' );
+disp( 'The estimated running time is 5 minutes. Please wait.' );
 
 options.sampling.method = 'disc';
 options.debug = true;
@@ -73,11 +73,11 @@ options.temporary_results = [ pwd filesep 'temporary_results' ];
 options.downsampling = [5,5,1];
 options = ml_initparam( options, struct( ...
     'train', struct( 'flag', 'framework' )));
-options.model.filename = '3D_HeLa_framework.xml';
+options.model.filename = 'model.xml';
 
 % generic model options
 % ---------------------
-options.model.name = '3d_hela_framework_model';
+options.model.name = '3d Hela framework model';
 options.model.id = num2str(now);
 
 % nuclear shape model options
@@ -98,14 +98,26 @@ options.cell.id = num2str(now);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FEEL FREE TO MODIFY THE VARIABLES IN THIS BLOCK
 options.model.resolution = [0.049, 0.049, 0.2000];
-directory = '../../../images/HeLa/3D/processed/';
+directory = '../../../images/HeLa/3D/processed';
 
 dimensionality = '3D';
 
-for i = 1:15
+%LAMP2 dataset
+dna = {}; cellm = {}; protein = {}; options.masks = {}; options.labels = {};
+
+for i = 1:25
+    dna{i} = [directory filesep 'Nuc_cell' num2str(i) '_ch0_t1.tif'];
+    cellm{i} = [directory filesep 'Nuc_cell' num2str(i) '_ch1_t1.tif'];
+    protein{i} = [directory filesep 'Nuc_cell' num2str(i) '_ch2_t1.tif'];
+    options.labels{length(options.labels)+1} = 'Nucleoli';
+    options.masks{i} = [directory filesep 'Nuc_cell' num2str(i) '_mask_t1.tif'];
+end
+
+for i = 26:50
     dna{i} = [directory filesep 'LAM_cell' num2str(i) '_ch0_t1.tif'];
     cellm{i} = [directory filesep 'LAM_cell' num2str(i) '_ch1_t1.tif'];
     protein{i} = [directory filesep 'LAM_cell' num2str(i) '_ch2_t1.tif'];
+    options.labels{length(options.labels)+1} = 'LAMP2';
     options.masks{i} = [directory filesep 'LAM_cell' num2str(i) '_mask_t1.tif'];
 end
 
@@ -114,7 +126,7 @@ end
 options.documentation.author = 'Murphy Lab';
 options.documentation.email = 'murphy@cmu.edu';
 options.documentation.website = 'murphy@cmu.edu';
-options.documentation.description = 'This is the framework model is the result from demo3D11.';
+options.documentation.description = 'This framework model is the result from demo3D11.';
 options.documentation.date = date;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

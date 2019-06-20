@@ -16,7 +16,7 @@ function answer = demo3D00()
 
 % Robert F. Murphy
 %
-% Copyright (C) 2012-2017 Murphy Lab
+% Copyright (C) 2012-2019 Murphy Lab
 % Computational Biology Department
 % School of Computer Science
 % Carnegie Mellon University
@@ -61,12 +61,14 @@ options.targetDirectory = pwd;
 options.prefix = 'img';
 options.compression = 'lzw';
 options.sampling.method = 'disc';
+options.microscope = 'none';
 options.debug = false;
 options.verbose = true;
 options.display = false;
 options.output.OMETIFF = true;
 options.output.tifimages = true;
 options.temporary_results = [ pwd filesep 'temporary_results' ];
+options.overwrite_synthetic_instances = false;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

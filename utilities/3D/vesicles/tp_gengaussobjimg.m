@@ -90,33 +90,28 @@ param.samplingDensity = varargin{5};
 
 param = ml_initparam(param, struct('debug', false));
 
+overlapsubsize = param.overlapsubsize;
+param.objstd = param.rendAtStd;
+
 param2 = param;
+param2.rendAtStd = param.overlapthresh;
+param2.objstd = param2.rendAtStd;
 
-if isfield(param, 'overlapsubsize')
-    overlapsubsize = param.overlapsubsize;
-else
-    overlapsubsize = 0.3;
-end
+erodeSize = param.oobbuffer;
 
-if isfield(param, 'rendAtStd')
-    param.objstd = param.rendAtStd;
-else
-    %icaoberg 12/11/2013
-    param.objstd = 2;
-    param.rendAtStd = 2;
-end
-
-if isfield(param, 'overlapthresh')
-    param2.rendAtStd = param.overlapthresh;
-    param2.objstd = param2.rendAtStd;
-else
-    param2.rendAtStd = 1;
-    param2.objstd = 1;
+if range(param.resolution.cubic) ~= 0
+    error('param.resolution.cubic must be isometric');
 end
 
 if param2.rendAtStd == 0
     probinds = find(probimg > 0);
 else
+    %D. Sullivan 10/25/14
+    %For now we will use 1% of the cell size
+    erodeSize = max(erodeSize, max(size(probimg))*0.005*param.resolution.cubic(1));
+end
+
+if erodeSize > 0
     %D. Sullivan 10/25/14
     %We care about object overlap
     %let's make a little padding near the border of the cell and nucleus
@@ -127,17 +122,19 @@ else
     %eroded
     padsize = 3;
     binpadimg = padarray(binimg,[padsize,padsize,padsize]);
+    %{
     %Then we erode the image slightly
     %For now we will use 1% of the cell size
-    erodeSize = ceil(max(size(probimg))*0.005);
     se = strel('disk',erodeSize);
     erodeimg = imerode(binpadimg,se);
+    %}
+    % Erode more precisely using the distance transform
+    distimg = bwdist(~binpadimg);
+    erodeimg = distimg > erodeSize / param.resolution.cubic(1);
     %remove padding
     erodeimg = erodeimg(padsize+1:size(erodeimg,1)-padsize,padsize+1:size(erodeimg,2)-padsize,padsize+1:size(erodeimg,3)-padsize);
     %mask image with original
-    probimg = probimg.*erodeimg;
-    
-    
+    probimg = probimg.*erodeimg; 
 end
 
 imsize = size(probimg);
@@ -155,7 +152,6 @@ end
 %icaoberg 8/6/2012
 clear varargin;
 
-
 if ~(strcmpi(objectmethod,'sampled')|| ...
         strcmpi(objectmethod,'disc'))
     warning('CellOgranizer: Unrecognized object fill method, defaulting to disc');
@@ -165,24 +161,18 @@ end
 obj = [];
 img = [];
 
-%fprintf( 1, '%s%%', '0');
-
-%devins 8/6/2012
-%D. Sullivan 3/14/13 changed to normal param structure
-% paramobj.imagesize = size(protimg);
 param.imagesize = size(protimg);
 invalid_objs = 0;
 
 newpos = zeros(n, ndims(probimg));
 
-% devins 8/7/2012
-% while i < n
-%changed from i<n to i<=n
 sizex = zeros(1,n);
 sizey = zeros(1,n);
 sizez = zeros(1,n);
 objrotvec = zeros(n,3);
 objsizevec = zeros(n,3);
+objrotmat = zeros(n,4,4);
+objcovmat = zeros(n,3,3);
 
 successes = 0;
 total_failures = 0;
@@ -207,32 +197,9 @@ while i <= n
         sizey(i) = ml_rnd(model.y_x);
         sizez(i) = ml_rnd(model.z_x);
         
-        %D. Sullivan 11/3/14 - this is getting pulled out to after cubic
-        %%%
-        %         newSigma = diag([sizex(i) sizey(i) sizez(i)].^2);
-        
-        %resizing
-        %         objsizevec(i,:) = ceil(param.rendAtStd * sqrt(diag(newSigma)))';
-        %         objsizevec(i,:) = (param.rendAtStd * sqrt(diag(newSigma)))';
-        
-        %D. Sullivan 4/15/14
-        %Check that the object will be at least 1 pixel in the image - this
-        %is to ensure the object overlap code works(with no downsampling).
-        %         if any(objsizevec(i,:)<0.5)
-        %             toosmall = 1
-        %             continue
-        %         end
-        %if any of the sigmas are less than 1 pixel, set them to 1.
-        %this prevents point masses
-        %         if(sum(newSigma(newSigma>0)<1)>0)
-        %             newSigma(newSigma~=0&newSigma<1) = 1;
-        %         end
-        %%%
-        
         PofSizex = logncdf(sizex(i),model.x.mu,model.x.sigma);
         PofSizey = normcdf(sizey(i),model.y_x.mu,model.y_x.sigma);
         PofSizez = normcdf(sizez(i),model.z_x.mu,model.z_x.sigma);
-        
     end
     
     %11/3/14 - D. Sullivan, We need to adjust the objects to be in a cubic
@@ -252,23 +219,11 @@ while i <= n
     %save the object sizes (for SBML-spatial)
     objsizevec(i,:) = (param.rendAtStd * sqrt(diag(newSigma)))';
     
-    %if any of the sigmas are less than 1 pixel, set them to 1.
-    %this prevents point masses
-    %D. Sullivan 11/3/14 - this is done after the size saving since the
-    %real sizes are in continuous space and thus may be smaller than 1voxel
     if(sum(newSigma(newSigma>0)<1)>0)
         newSigma(newSigma~=0&newSigma<1) = 1;
     end
     
-    %grj 6/30/13 move rotation code out of build-a-valid-gaussian loop.
-    % Random rotation
-    t = rand * pi;
-    Rx = [1 0 0;0 cos(t) -sin(t);0 sin(t) cos(t)];
-    t = rand * pi;
-    Ry = [cos(t) 0 sin(t);0 1 0;-sin(t) 0 cos(t)];
-    t = rand * pi;
-    Rz = [cos(t) -sin(t) 0;sin(t) cos(t) 0;0 0 1];
-    R = Rz*Ry*Rx;
+    R = randomRotationMatrix(3);
     newCov = R*newSigma*R';
     
     %8/8/13 D. Sullivan & R. Arepally recovered the per-axis rotations for
@@ -279,27 +234,19 @@ while i <= n
     thetaz = atan2(R(2,1),R(1,1));
     %Convert to degrees
     objrotvec(i,:) = [thetax,thetay,thetaz].*(180/pi);
+    objrotmat(i,:,:) = [[R; 0, 0, 0], [0; 0; 0; 1]];
+    objcovmat(i,:,:) = newCov;
     
     if i ==0
         i = 1;
     end
     
     invalid_objs = invalid_objs+objtry;
-    %generate gaussian object (vesicle)
-    %     obj{i} = ml_gaussobj(newCov,param);
-    
-    %     if(sizez(i)<0)
-    %         wait = 1;
-    %     end
-    
-    %     objsizevec(i,:) = ceil(param.objstd * sqrt(diag(newCov)))';
-    %D. Sullivan 4/29/14 - make sure we have a legal Cov.
     if ~isreal(eig(newCov))
         disp('Attempted to sample non-real covariance, trying again.')
         continue
     end
     obj{i} = ml_gaussobj(newCov, param);
-    
     
     %      obj = ml_gaussobj(newCov,paramobj);
     if (strcmpi(objectmethod,'sampled'))
@@ -318,7 +265,6 @@ while i <= n
         
         
         placesub = imresize(logical(placeimg), overlapsubsize, 'bilinear');
-        
         probsub = imresize(probimg,overlapsubsize, 'bilinear');
         
         objerodesub = imresize(objerode,overlapsubsize, 'bilinear');
@@ -361,7 +307,6 @@ while i <= n
             end
             %             i = i-1;
             continue
-            %             shit = 1
         end
         placeimg(ind) = 0;
     else
@@ -390,6 +335,28 @@ disp( [ 'On average there were ' num2str(total_failures/n) ' failures per object
 
 %fprintf( 1, '%s\n', '' );
 
+
+
+%devins 8/7/2012 reverted back to adding objects after they were sampled
+if(strcmpi(objectmethod,'disc'))
+    [protimg,obj_keep] = ml_imaddobj2(protimg,obj,...
+        struct('method','replace','pos',newpos,'objectmethod',objectmethod), param);
+elseif(strcmpi(objectmethod,'sampled'))
+    %properly fill the vesicles based on the method
+    paramsampling = struct('method','add','pos',newpos,...
+        'objectmethod',objectmethod);
+    paramsampling.numsamplescell = numsamples;
+    [protimg, obj_keep] = ml_imaddobj2(protimg,obj,paramsampling, param);
+else
+    obj_keep = true(size(newpos,1),1);
+end
+
+objsizevec = objsizevec(obj_keep,:);
+newpos     = newpos(obj_keep,:);
+objrotvec  = objrotvec(obj_keep,:);
+objrotmat  = objrotmat(obj_keep,:,:);
+objcovmat  = objcovmat(obj_keep,:,:);
+
 %D. Sullivan 7/23/13 added objsizevec for blender primitive generation
 % if isfield(param.output,'primitives') && param.output.primitives==true
 % objsizevec = imsize;
@@ -398,24 +365,13 @@ objposvec = [newpos(:,2),newpos(:,1),newpos(:,3)];
 %save the objectsizevector in the temp results
 %8/8/13  D. Sullivan & R. Arepally added collection of object primitives
 save([param.temporary_results filesep 'primitives' ...
-    num2str(param.currentmodelnum) '.mat'],'objsizevec','objposvec','objrotvec');
+    num2str(param.currentmodelnum) '.mat'],'objsizevec','objposvec','objrotvec','objrotmat','objcovmat');
 clear objsizevec
 clear objposvec
 clear objrotvec
+clear objrotmat
+clear objcovmat
 clear imsize
-
-%devins 8/7/2012 reverted back to adding objects after they were sampled
-if(strcmpi(objectmethod,'disc'))
-    protimg = ml_imaddobj2(protimg,obj,...
-        struct('method','replace','pos',newpos,'objectmethod',objectmethod));
-elseif(strcmpi(objectmethod,'sampled'))
-    %properly fill the vesicles based on the method
-    paramsampling = struct('method','add','pos',newpos,...
-        'objectmethod',objectmethod);
-    paramsampling.numsamplescell = numsamples;
-    protimg = ml_imaddobj2(protimg,obj,paramsampling);
-    
-end
 
 %devins 8/6/2012
 if debug

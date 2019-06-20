@@ -18,7 +18,7 @@ function param = img2param_3D( imdna_path,imcell_path,...
 
 % Author: Devin Sullivan 6/13/13
 %
-% Copyright (C) 2007-2013 Murphy Lab
+% Copyright (C) 2007-2019 Murphy Lab
 % Carnegie Mellon University
 %
 % This program is free software; you can redistribute it and/or modify
@@ -54,16 +54,16 @@ function param = img2param_3D( imdna_path,imcell_path,...
 % R.F. Murphy 3/11/2017
 %   Allow nuc model building even if imdna is empty
 %   (which allows nuclear hole finding to work)
-% 
+%
 % Xiongtao Ruan 09/14/2018
 %   add SPHARM_RPDM model parameterization
-%   fix bug for volume calculation 
+%   fix bug for volume calculation
 
 
 options = ml_initparam(options, struct('downsampling', [1,1,1], ...
     'display', false, ...
     'train', [], ...
-    'segminnucfraction', 0.2));
+    'segminnucfraction', 0.17));
 
 options.train = ml_initparam(options.train, struct('flag', 'all'));
 
@@ -95,17 +95,30 @@ if ~exist(savefile, 'file')
     seg.cell = seg_cell;
     
     % xruan 09/14/2018
+    disp('Computing nuclear and cell volume');
     cellvolume = double(sum(seg_cell(:)));
     nuclearvolume = double(sum(seg_dna(:)));
     ncratio = nuclearvolume/cellvolume;
-    disp(['Nuclear/Cell volume ratio=' num2str(ncratio)]);
+    disp(['Nuclear/cell volume ratio is ' num2str(ncratio)]);
     if ncratio < options.segminnucfraction
-        disp('Warning: Nuclear volume fraction too low.');
+        warning('Nuclear volume fraction too low.');
         param = [];
         return
     end
     
-    save(savefile, 'seg')
+    if exist('imdna')
+        img.nuc = imdna;
+    end
+    
+    if exist('imcell')
+        img.cell = imcell;
+    end
+    
+    if exist('improt')
+        img.prot = improt;
+    end
+    
+    save(savefile, 'seg','img')
 else
     load(savefile)
 end
@@ -128,7 +141,7 @@ if ~exist(savefile, 'file')
             nuc.type = 'diffeomorphic';
             nuc.seg = param.seg.nuc;
             
-        % xruan 09/14/2018            
+            % xruan 09/14/2018
         case 'spharm_rpdm'
             [nuc] = spharm_rpdm_image_parameterization(param.seg.nuc, options.spharm_rpdm);
             nuc.type = 'spharm_rpdm';
@@ -163,13 +176,13 @@ if ~isempty(imcell)
                 cellfit.type = 'diffeomorphic';
                 cellfit.seg = param.seg.cell;
                 
-            % xruan 09/14/2018
+                % xruan 09/14/2018
             case 'spharm_rpdm'
                 if strcmp(options.train.flag, 'nuclear')
                     cellfit = nuc;
                 else
                     [cellfit] = spharm_rpdm_image_parameterization(param.seg.cell, options);
-                    cellfit.type = 'spharm_rpdm';                
+                    cellfit.type = 'spharm_rpdm';
                 end
             otherwise
                 warning(['Unsupported cell model type ' options.nucleus.type '. Returning empty model.'])
@@ -184,7 +197,7 @@ if ~isempty(imcell)
     param.cell = cellfit;
 end
 
-% 09/17/2018 add postprocess for spharm rpdm model. 
+% 09/17/2018 add postprocess for spharm rpdm model.
 % 02/24/2019 update the type setting so that it works for only cell/nuclear shape as spharm_rpdm
 if (strcmp(options.cell.type, 'spharm_rpdm') || strcmp(options.nucleus.type, 'spharm_rpdm')) && options.spharm_rpdm.postprocess
     [cell_post, nuc_post] = spharm_rpdm_sh_postprocess(cellfit, nuc, savedir, options);

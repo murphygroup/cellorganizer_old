@@ -31,7 +31,10 @@ if ~exist('conn', 'var')
     end
 end
 
+disp('Finding objects')
+tic
 objs = ml_findobjs(img, conn);
+toc
 
 [~, ind] = max(cellfun(@(x) size(x, 1), objs));
 

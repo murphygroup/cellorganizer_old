@@ -50,4 +50,4 @@ imageSize = size(img);
 
 idx = find(img>0);
 [X,Y,Z] = ind2sub(imageSize,idx);
-obj = [X,Y,Z,img(idx)];
+obj = [X,Y,Z,squeeze(img(idx))];

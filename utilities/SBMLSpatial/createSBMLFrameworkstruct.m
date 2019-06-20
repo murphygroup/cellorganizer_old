@@ -1,4 +1,4 @@
-function framework = createSBMLFrameworkstruct(images,param)
+function framework = createSBMLFrameworkstruct(images,models,param)
 %CREATESBMLFRAMEWORKSTRUCT This function returns a framework structure for saving as SBML-Spatial
 %
 %Inputs:
@@ -67,11 +67,18 @@ for i = 1:length(images)
     if i==1
         framework.list(i).name = param.SBML_NName{1};
         framework.list.ordinal = 2;
+        framework.list(i).mesh = param.nucmesh;
+        framework.list(i).resolution = models{1}.nuclearShapeModel.resolution;
     elseif i==2
         framework.list(i).name = param.SBML_CName{1};
         framework.list(i).ordinal = 1;
+        framework.list(i).mesh = param.cellmesh;
+        framework.list(i).resolution = models{1}.cellShapeModel.resolution;
     else
         framework.list(i).name = ['unknown',num2str(i)];
+        framework.list(i).mesh = [];
+        warning('CellOrganizer:createSBMLFrameworkstruct', 'Check indexing here!');
+        framework.list(i).resolution = models{i-2}.proteinModel.resolution;
     end
     %D. Sullivan 11/4/14 - adjusting resolution to ensure cubic voxels
 %     currimg = AdjustResolutions(images{i},param.resolution.objects,param.resolution.cubic);

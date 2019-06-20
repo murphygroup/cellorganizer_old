@@ -3,7 +3,7 @@ function answer = demo3D53()
 %
 % Reconstruct one 3D image with nuclear, cell shape for SPHARM-RPDM model
 %
-% Input 
+% Input
 % -----
 % * a valid CellOrganizer model file
 %
@@ -54,8 +54,8 @@ end
 
 %modify the next line to generate more images
 options.numberOfSynthesizedImages = 1;
-options.model.spharm_rpdm.synthesis_method = 'reconstruction';
 options.synthesis = 'framework';
+options.model.spharm_rpdm.synthesis_method = 'reconstruction';
 options.model.spharm_rpdm.imageSize = [205, 205, 18];
 options.targetDirectory = pwd;
 options.prefix = 'img';

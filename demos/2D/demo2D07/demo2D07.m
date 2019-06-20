@@ -66,7 +66,7 @@ options.debug = false;
 options.verbose = true;
 options.display = false;
 options.output.OMETIFF = true;
-filename = '../demo2D05/lamp2.mat';
+filename = '../demo2D05/model.mat';
 
 if ~exist( filename )
     warning( [ 'File ' filename ' not found.' ] );

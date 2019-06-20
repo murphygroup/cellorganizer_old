@@ -1,6 +1,31 @@
-function [cellimg,nucimg] = ml_gencellshape3d( model, nucleus, param )
+function result = ml_gencellshape3d( model, nucleus, param )
 % ML_GENCELLSHAPE3D generates a cell shape from the eigen shape model of the
 % radius ratio of the nuclei to the cell membrane.
+
+% Author: Ivan E. Cao-Berg
+%
+% Copyright (C) 2012-2019 Murphy Lab
+% Lane Center for Computational Biology
+% School of Computer Science
+% Carnegie Mellon University
+%
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published
+% by the Free Software Foundation; either version 2 of the License,
+% or (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful, but
+% WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+% General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program; if not, write to the Free Software
+% Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+% 02110-1301, USA.
+%
+% For additional information visit http://murphylab.web.cmu.edu or
+% send email to murphy@cmu.edu
 
 % Created April 7, 2012 R.F. Murphy from tp_gencellshape by T. Peng
 %
@@ -28,9 +53,23 @@ param = ml_initparam(param,...
     'ysize',1024,...
     'samp_rate',360,...
     'alpha',0.2,...
-    'generatemeanshape',false));
+    'generatemeanshape',false,...
+    'synthesis','all'));
 
 nucimgsize = nucleus.nucimgsize;
+
+%icaoberg 8/7/2013
+%this change was done to allow users to synthesize only nuclear shape model
+%files
+%G. Johson 9/7/2013 
+%Bug fixes
+if strcmpi(param.synthesis,'all')
+    f = param.resolution.cell./param.resolution.objects;
+elseif strcmpi( param.synthesis, 'framework' )
+    f = [1,1,1];
+else
+    f = [1,1,1];
+end
 
 % should we use actual center of mass of nucleus here?
 xcenter = nucimgsize(1) / 2;
@@ -86,6 +125,40 @@ Phi = -pi:delta:pi;
 cellimg = zeros(nucimgsize(1),nucimgsize(2),cell_height);
 nucimg = cellimg;
 
+% Create mesh
+n_angles = length(Phi)-1;
+n_slices = cell_height;
+cellmesh = struct('vertices', zeros(n_slices * n_angles + 2, 3), 'faces', zeros((n_slices-1) * n_angles * 2 + n_angles * 2, 3));
+% Bottom
+bottom_face_indices = (1:n_angles) + (n_slices-1) * n_angles * 2;
+bottom_center_vertex_index = size(cellmesh.vertices, 1) - 1;
+cellmesh.faces(bottom_face_indices, 1) = 1:n_angles;
+cellmesh.faces(bottom_face_indices, 2) = circshift(cellmesh.faces(bottom_face_indices, 1), 1);
+cellmesh.faces(bottom_face_indices, 3) = bottom_center_vertex_index;
+cellmesh.vertices(bottom_center_vertex_index, 1) = xcenter;
+cellmesh.vertices(bottom_center_vertex_index, 2) = ycenter;
+cellmesh.vertices(bottom_center_vertex_index, 3) = 1;
+% Top
+top_face_indices = (1:n_angles) + (n_slices-1) * n_angles * 2 + n_angles;
+top_center_vertex_index = size(cellmesh.vertices, 1);
+cellmesh.faces(top_face_indices, 1) = (1:n_angles) + (n_slices-1) * n_angles;
+cellmesh.faces(top_face_indices, 2) = circshift(cellmesh.faces(top_face_indices, 1), -1);
+cellmesh.faces(top_face_indices, 3) = top_center_vertex_index;
+cellmesh.vertices(top_center_vertex_index, 1) = xcenter;
+cellmesh.vertices(top_center_vertex_index, 2) = ycenter;
+cellmesh.vertices(top_center_vertex_index, 3) = n_slices;
+% Sides
+for i = 1:n_slices-1
+    side_face_indices1 = (1:n_angles) + (i-1) * n_angles * 2;
+    cellmesh.faces(side_face_indices1, 1) = (1:n_angles) + (i-1) * n_angles;
+    cellmesh.faces(side_face_indices1, 2) = circshift(cellmesh.faces(side_face_indices1, 1), -1);
+    cellmesh.faces(side_face_indices1, 3) = (1:n_angles) + i * n_angles;
+    side_face_indices2 = side_face_indices1 + n_angles;
+    cellmesh.faces(side_face_indices2, 1) = cellmesh.faces(side_face_indices1, 1);
+    cellmesh.faces(side_face_indices2, 2) = cellmesh.faces(side_face_indices1, 3);
+    cellmesh.faces(side_face_indices2, 3) = circshift(cellmesh.faces(side_face_indices2, 2), 1);
+end
+
 % find out which slice to put the nucleus in
 % use model for fraction of cell height at which nucleus starts
 try
@@ -106,6 +179,7 @@ end
 
 
 maxsurf = max(nucleus.nucsurf,[],1);
+any_points_outside_image = false;
 
 for i = 1:cell_height
     % if current slice should contain some nucleus, calc which slice of
@@ -128,8 +202,8 @@ for i = 1:cell_height
         nucslice = zeros(nucimgsize(1),nucimgsize(2));
     else
         % make sure that nucleus is inside cell
-%         idx=find(nuc2cell_ratio_interp(i,:)>0.95);
-%         nuc2cell_ratio_interp(i,idx)=0.95;
+        % idx=find(nuc2cell_ratio_interp(i,:)>0.95);
+        % nuc2cell_ratio_interp(i,idx)=0.95;
         nucslice = nucleus.nucimg(:,:,j);
     end
     
@@ -144,25 +218,46 @@ for i = 1:cell_height
     
 %     [x,y] = pol2cart(Phi,nucleus.nucsurf(j,:)./nuc2cell_ratio_interp(i,:));
     [x,y] = pol2cart(Phi,maxsurf./nuc2cell_ratio_interp(i,:));
-
+    
     x = x + xcenter;
     y = y + ycenter;
 
+    vertices_indices = (1:n_angles) + (i-1) * n_angles;
+    cellmesh.vertices(vertices_indices, 1:2) = [x(1:end-1)', y(1:end-1)'];
+    cellmesh.vertices(vertices_indices, 3) = i;
+    
+    [previous_warning_str, previous_warning_id] = lastwarn();
+    warning_state = warning;
+    warning('off', 'CellOrganizer:ml_interpcurve2img:outOfRange');
+    
     %i, min(x), max(x), min(y), max(y)
     sliceimg = ml_interpcurve2img( nucimgsize(1:2), x, y);
+    
+    [warning_str, warning_id] = lastwarn();
+    warning(warning_state);
+    if ~strcmp(previous_warning_id, warning_id) && strcmp(warning_id, 'CellOrganizer:ml_interpcurve2img:outOfRange')
+        any_points_outside_image = true;
+    end
 
     %D. Sullivan 7/6/13 - doesn't make any sense to get the perim image and
     %then fill it! 
-%     if max(nucslice(:))
-%         [xn,yn] = pol2cart(Phi,nucleus.nucsurf(j,:));
-%         xn = xn + xcenter;
-%         yn = yn + ycenter;
-%         nucslice = ml_interpcurve2img( nucimgsize(1:2), xn, yn);
-% %        figure(1); plot(x,y,xn,yn);
-%     end
-%    figure(2); imshow(sliceimg); figure(3); imshow(nucslice); pause(0.1);
+    % if max(nucslice(:))
+        % [xn,yn] = pol2cart(Phi,nucleus.nucsurf(j,:));
+        % xn = xn + xcenter;
+        % yn = yn + ycenter;
+        % nucslice = ml_interpcurve2img( nucimgsize(1:2), xn, yn);
+       % % figure(1); plot(x,y,xn,yn);
+    % end
+    % figure(2); imshow(sliceimg); figure(3); imshow(nucslice); pause(0.1);
     cellimg(:,:,i) = imfill(sliceimg,'holes');
     %D. Sullivan 7/6/13 should be no reason to fill again
-%     nucimg(:,:,i) = imfill(nucslice,'holes');
+    % nucimg(:,:,i) = imfill(nucslice,'holes');
     nucimg(:,:,i) = nucslice;
 end
+
+if any_points_outside_image
+    warning('CellOrganizer:ml_gencellshape3d:outOfRange', 'CellOrganizer: Out of range subscripts when adding pixels to image');
+end
+
+
+result = struct('cellimg', cellimg, 'nucimg', nucimg, 'cellmesh', cellmesh);

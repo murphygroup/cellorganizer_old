@@ -25,11 +25,15 @@ function [param] = showPCAShapeSpaceFigure(model, labels, param)
 % send email to murphy@cmu.edu
 
 % 03/23/2018 copied from showPCAShapeSpaceFigure.m
-
+% 02/25/2019 xruan: make all image the same size
 
 
 if ~exist('param', 'var')
     param = [];
+end
+
+if ~isfield(model, 'cellShapeModel')
+    model.cellShapeModel = model.nuclearShapeModel;
 end
 
 nimgs = model.cellShapeModel.numimgs;
@@ -53,9 +57,19 @@ param = ml_initparam(param, struct( ...
     ));
 cellnums = 1:nimgs;
 
-if ~exist('labels', 'var') || isempty(labels)
-    labels = 1:nimgs;
+% set labels parameter
+%logic: Check for model.dataset.labels 
+%       => if not there check for labels in options structure
+%       => if not there set it 1 for an array of the length of images
+if isfield(model, 'dataset') && isfield(model.dataset, 'labels') && ~isempty(model.dataset.labels)
+    [ulabels, ~, labels] = unique(model.dataset.labels);
+elseif exist('labels', 'var') && ~isempty(labels)
+    [ulabels, ~, labels] = unique(labels);
+else
+    labels  = ones(1, nimgs); %unique(1:nimgs);
+    ulabels = [1]; 
 end
+param.labels = numel(labels);
 
 skipmissing = param.skipmissing;
 cm = param.cm;
@@ -68,10 +82,6 @@ keepinds = ~any(isnan(model.cellShapeModel.train_score),2);
 %     labels = labels(keepinds);
 cellnums = cellnums(keepinds);
 %     embed_pos = model.cellShapeModel.positions(keepinds,:);
-
-[ulabels, ~, labelinds ] = unique(labels);
-
-labels = labelinds;
 
 if strcmpi(class(cm), 'function_handle')
     colors = cm(length(ulabels))*0.8;
@@ -88,16 +98,34 @@ hold on
 % set up images from contour
 if any(strcmp(model.cellShapeModel.components, 'cell'))
     cell_params = model.cellShapeModel.cell_params;
+    max_cell_size = cellfun(@(x) max(x), cell_params, 'UniformOutput', false);
+    max_cell_size = max(cat(1, max_cell_size{:}));
+    min_cell_size = cellfun(@(x) min(x), cell_params, 'UniformOutput', false);
+    min_cell_size = min(cat(1, min_cell_size{:}));
 else 
     cell_params = cell(nimgs, 1);
+    max_cell_size = [-Inf, -Inf];
+    min_cell_size = [Inf, Inf];
 end
 if any(strcmp(model.cellShapeModel.components, 'nuc'))
     nuc_params = model.cellShapeModel.nuc_params;
+    max_nuc_size = cellfun(@(x) max(x), nuc_params, 'UniformOutput', false);
+    max_nuc_size = max(cat(1, max_nuc_size{:}));
+    min_nuc_size = cellfun(@(x) min(x), nuc_params, 'UniformOutput', false);
+    min_nuc_size = min(cat(1, min_nuc_size{:}));    
 else
     nuc_params = cell(nimgs, 1);
+    max_nuc_size = [-Inf, -Inf];
+    min_nuc_size = [Inf, Inf];    
 end
 
-imfunc = @(x) convert_contour_to_image(cell_params{x}, nuc_params{x});
+% assume max and min image size are all nonnegative
+max_img_size = max(max_cell_size, max_nuc_size);
+min_img_size = min(min_cell_size, min_nuc_size);
+image_size = ceil(max_img_size - min_img_size);
+image_start = floor(min_img_size);
+
+imfunc = @(x) convert_contour_to_image(cell_params{x} - image_start, nuc_params{x} - image_start, image_size);
 param = ml_initparam(param, struct( ...
     'imfunc', @(x) imrotate(img2flat(imfunc(x), colors(labels(x),:)), param.rotate) ...
     ));

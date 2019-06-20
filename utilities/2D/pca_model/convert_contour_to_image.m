@@ -47,7 +47,7 @@ else
     I_cell = false(imageSize);
 end
 
-if ~isempty(cell_landmarks)
+if ~isempty(nuc_landmarks)
     I_nuc = poly2mask(nuc_landmarks(:, 2), nuc_landmarks(:, 1), imageSize(1), imageSize(2));
 else
     I_nuc = false(imageSize);

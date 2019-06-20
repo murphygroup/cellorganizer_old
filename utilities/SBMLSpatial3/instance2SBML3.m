@@ -305,12 +305,19 @@ if ~isempty(CSGdata)
             rotation = object.rotation;
             CSGRotationNode = docNode.createElement([s,'csgRotation']);
             CSGRotationNode.setAttribute([s,'spatialId'], 'rotation');
+            % rotateAxis* is currently invalid SBML
+            % (http://sbml.org/Facilities/Validator/, "Level 3 Version 2 Core
+            % (Release 1), as well as all Level 3 packages for which
+            % specifications exist") but VCell still needs it:
             %         CSGRotationNode.setAttribute([s,'rotateAxisX'], num2str(rotation(1)));
             %         CSGRotationNode.setAttribute([s,'rotateAxisY'], num2str(rotation(2)));
             %         CSGRotationNode.setAttribute([s,'rotateAxisZ'], num2str(rotation(3)));
             CSGRotationNode.setAttribute([s,'rotateAxisX'], num2str(deg2rad(rotation(1))));
             CSGRotationNode.setAttribute([s,'rotateAxisY'], num2str(deg2rad(rotation(2))));
             CSGRotationNode.setAttribute([s,'rotateAxisZ'], num2str(deg2rad(rotation(3))));
+            CSGRotationNode.setAttribute([s,'rotateX'], num2str(deg2rad(rotation(1))));
+            CSGRotationNode.setAttribute([s,'rotateY'], num2str(deg2rad(rotation(2))));
+            CSGRotationNode.setAttribute([s,'rotateZ'], num2str(deg2rad(rotation(3))));
         else
             error('No rotation specified. Unable to create SBML Spatial file.');
         end
@@ -403,19 +410,19 @@ if ~isfield(CSGdata,'primitiveOnly')||CSGdata.primitiveOnly==0
             object.img(:,:,end) = object.img(:,:,topslice).*0;
             
         end
-	disp('trying to make mesh now')
-	tempsavepath = [savepath(1:end-4),'FVtemp',num2str(i),'.mat'];
-	if exist(tempsavepath)
-		disp('temp results found, loading them...')
-		load(tempsavepath)
-		rmfield(object,'img');
-	else
-        	FV = getMeshPoints(object.img,[savepath(1:end-4),num2str(i)]);
-		save(tempsavepath,'FV')
-		rmfield(object,'img')
-	end
-% 	resolution
-% 	size(FV.vertices)
+        disp('trying to make mesh now')
+        tempsavepath = [savepath(1:end-4),'FVtemp',num2str(i),'.mat'];
+        if exist(tempsavepath)
+            disp('temp results found, loading them...')
+            load(tempsavepath)
+            rmfield(object,'img');
+        else
+                FV = getMeshPoints(object.img,[savepath(1:end-4),num2str(i)]);
+            save(tempsavepath,'FV')
+            rmfield(object,'img')
+    end
+%   resolution
+%   size(FV.vertices)
         FV.vertices = FV.vertices.*repmat(resolution,size(FV.vertices,1),1);
         
             save([savepath(1:end-4),'FV',object.name,'_diffeo.mat'],'FV');

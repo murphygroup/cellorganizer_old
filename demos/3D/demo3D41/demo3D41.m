@@ -117,7 +117,9 @@ if ~exist( directory )
 else
     files = dir([directory filesep '3D_HeLa_LAMP2*.ome.tif']);
     files = sort_nat({files.name});
-    
+
+    masks = {}; dna = {}; cell = {}; protein = {}; options.labels = {};
+
     for i = 1:10
         masks{i} = @() flipdim( OME_loadchannel( ...
             [directory filesep files{i}],1),3 );
@@ -127,6 +129,7 @@ else
             [directory filesep files{i}],3),3 );
         protein{i} = @() flipdim( OME_loadchannel( ... 
             [directory filesep files{i}],4),3 );
+        options.labels{i} = 'LAMP2';
     end
     
     if isempty( masks ) || isempty( dna ) || isempty( cell ) || ...

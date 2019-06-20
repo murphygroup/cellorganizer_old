@@ -17,7 +17,7 @@ function answer = demo2D03(options)
 
 % Ivan E. Cao-Berg (icaoberg@cmu.edu)
 %
-% Copyright (C) 2015-2018 Murphy Lab
+% Copyright (C) 2015-2019 Murphy Lab
 % Computational Biology Department
 % School of Computer Science
 % Carnegie Mellon University
@@ -69,7 +69,7 @@ options.cell.type = 'ratio';
 % collection, modify these according to your needs
 directory = '../../../images/HeLa/2D/LAM/';
 dna = {}; cellm = {}; protein = {}; options.masks = {};
-for i=1:1:10
+for i=1:1:25
     dna{length(dna)+1} = [ directory filesep 'orgdna' filesep 'cell' num2str(i) '.tif' ];
     cellm{length(cellm)+1} = [ directory filesep 'orgcell' filesep 'cell' num2str(i) '.tif' ];
     options.masks{length(options.masks)+1} = [ directory filesep 'crop' filesep 'cell' num2str(i) '.tif' ];

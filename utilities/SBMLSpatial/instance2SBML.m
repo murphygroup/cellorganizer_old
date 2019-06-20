@@ -272,7 +272,7 @@ if ~isempty(CSGdata)
     for i = 1:length(dimensionNames)
         CoordCompNode = docNode.createElement([s,'coordinateComponent']);
         CoordCompNode.setAttribute([s,'spatialId'],dimensionNames(i));
-        CoordCompNode.setAttribute([s,'componentType'],['cartesian',upper(dimensionNames(i))]);
+        CoordCompNode.setAttribute([s,'type'],['cartesian',upper(dimensionNames(i))]);
         CoordCompNode.setAttribute([s,'sbmlUnit'],'m');
         CoordCompNode.setAttribute([s,'index'],num2str(i-1));
         

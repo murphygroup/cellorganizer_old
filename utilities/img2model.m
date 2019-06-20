@@ -6,7 +6,7 @@ function model = img2model( dna_images, cell_images, prot_images, options)
 
 % Ivan E. Cao-Berg
 %
-% Copyright (C) 2007-2018 Murphy Lab
+% Copyright (C) 2007-2019 Murphy Lab
 % Carnegie Mellon University
 %
 % This program is free software; you can redistribute it and/or modify
@@ -87,9 +87,11 @@ options = ml_initparam( options, struct( 'display', false ,...
 check_required_options(options, {'dimensionality'})
 check_required_options(options.model, {'resolution'})
 
+disp('Setting up data');
 [dna_images, cell_images, prot_images, options] = setup_data(dna_images, ...
     cell_images, prot_images, options);
 
+disp('Setting up model options');
 options = setup_model_options(dna_images, cell_images, prot_images, options);
 
 paramfiles = cell(size(dna_images));
@@ -101,15 +103,13 @@ isdone = false(size(dna_images));
 if strcmp(options.protein.type, 'standardized_map_half-ellipsoid')
     t_cell_info = options.t_cell_info;
     [t_cell_info, options] = tcell_imgs2params(t_cell_info, options);
-    
     [t_cell_info, options] = tcell_build_models(t_cell_info, options);
-    
     [t_cell_info, options] = tcell_adapt_models(t_cell_info, options);
-    
     model = t_cell_info;
     return;
 end
 
+disp(' '); print_large_title('Processing images');
 for i = 1:max([length(dna_images),length(cell_images),length(prot_images)])
     paramfiles{i} = [options.paramdir filesep 'param' num2str(i) '.mat'];
     
@@ -122,7 +122,6 @@ for i = 1:max([length(dna_images),length(cell_images),length(prot_images)])
     end
     
     system(['touch "' tmpfile '"']);
-    
     [imdna,options.dna_image_path] = readfileifnonblank(dna_images,i);
     [imcell,options.cell_image_path] = readfileifnonblank(cell_images,i);
     [improt,options.protein_image_path] = readfileifnonblank(prot_images,i);
@@ -143,11 +142,6 @@ for i = 1:max([length(dna_images),length(cell_images),length(prot_images)])
     if ~isa(immask, 'uint8' )
         immask = uint8(immask);
     end
-    
-    %    options.dna_image_path = copypathifnonblank(dna_images,i);
-    %    options.cell_image_path = copypathifnonblank(cell_images,i);
-    %    options.protein_image_path = copypathifnonblank(prot_images,i);
-    %    options.crop_image_path = copypathifnonblank(options.masks,i);
     
     savedir = [options.paramdir filesep 'param' num2str(i)];
     
@@ -184,8 +178,7 @@ if any(ismissing)
 end
 end
 
-
-function [dna_images, cell_images, prot_images, options] = setup_data(dna_images, cell_images, prot_images, options)
+function [dna_images_list, cell_images_list, protein_images_list, options] = setup_data(dna_images, cell_images, prot_images, options)
 
 options = ml_initparam(options, struct('masks', []));
 
@@ -193,37 +186,201 @@ if ~exist(options.paramdir, 'dir')
     mkdir(options.paramdir);
 end
 
-%if a single string is passed in, it may be a wildcard, so get all files
-%associated with that
-if ischar(dna_images)
-    dna_images = ml_ls(dna_images);
+disp(' '); print_simple_title('Creating list of nuclear membrane images');
+dna_images_list = {};
+label = -1;
+temp_labels = {};
+if isa(dna_images, 'cell' ) && ...
+        ~any(cellfun( @(x)(isa(x,'function_handle')), dna_images ))
+    for i=1:1:length((dna_images))
+        dataset = dna_images{i};
+        temp = ml_ls( dataset );
+        if length(temp) ~= 1
+            label = label+1;
+        end
+        if isempty(dna_images_list)
+            disp('Adding first dataset to list');
+            dna_images_list = temp;
+            for j=1:1:length(dna_images_list)
+                disp(['Adding file ' dna_images_list{j}]);
+                temp_labels{length(temp_labels)+1} = num2str(label);
+            end
+        else
+            disp('Adding another dataset to list')
+            for j=1:1:length(temp)
+                dna_images_list{length(dna_images_list)+1} = ...
+                    temp{j};
+                disp(['Adding file ' temp{j}]);
+                temp_labels{length(temp_labels)+1} = num2str(label);
+            end
+        end
+    end
+    if isempty(options.labels)
+        options.labels = temp_labels;
+    end
+    clear temp_labels;
+else
+    if iscell( dna_images ) && ... 
+        all(cellfun( @(x)(isa(x,'function_handle')), dna_images ))
+        dataset = dna_images;
+        label = label + 1;
+        disp('Adding datasets to list')
+        for j=1:1:length(dataset)
+            dna_images_list{length(dna_images_list)+1} = ...
+                dataset{j};
+            disp(['Adding file function handle ' num2str(j) ' to list']);
+            temp_labels{length(temp_labels)+1} = num2str(label);
+        end
+        options.labels = temp_labels;
+        clear dataset
+    else
+        dataset = dna_images;
+        temp = ml_ls( dataset );
+        label = label + 1;
+        disp('Adding datasets to list')
+        for j=1:1:length(temp)
+            dna_images_list{length(dna_images_list)+1} = ...
+                temp{j};
+            disp(['Adding file ' temp{j}]);
+            temp_labels{length(temp_labels)+1} = num2str(label);
+        end
+        options.labels = temp_labels;
+        clear temp_labels;
+    end
 end
 
-if ischar(cell_images)
-    cell_images = ml_ls(cell_images);
-end
-if isempty(cell_images)
-    cell_images = cell(size(dna_images));
+if isempty(dna_images_list)
+    disp('List is empty or no nuclear membrane images found');
 end
 
-if ischar(prot_images)
-    prot_images = ml_ls(prot_images);
-end
-if isempty(prot_images)
-    prot_images = cell(size(dna_images));
+disp(' '); print_simple_title('Creating list of cell membrane images');
+cell_images_list = {};
+if isa(cell_images, 'cell' ) && ...
+        ~any(cellfun( @(x)(isa(x,'function_handle')), cell_images ))
+    for i=1:1:length((cell_images))
+        dataset = cell_images{i};
+        temp = ml_ls( dataset );
+        
+        if isempty(cell_images_list)
+            disp('Adding first dataset to list');
+            cell_images_list = temp;
+            for j=1:1:length(cell_images_list)
+                disp(['Adding file ' cell_images_list{j}]);
+            end
+        else
+            disp('Adding another dataset to list')
+            for j=1:1:length(temp)
+                cell_images_list{length(cell_images_list)+1} = ...
+                    temp{j};
+                disp(['Adding file ' temp{j}]);
+            end
+        end
+    end
+else
+    if iscell( cell_images ) && ...
+            all(cellfun( @(x)(isa(x,'function_handle')), cell_images ))
+        dataset = cell_images;
+        label = label + 1;
+        disp('Adding datasets to list')
+        for j=1:1:length(dataset)
+            cell_images_list{length(cell_images_list)+1} = ...
+                dataset{j};
+            disp(['Adding file function handle ' num2str(j) ' to list']);
+        end
+        clear dataset
+    else
+        dataset = cell_images;
+        temp = ml_ls( dataset );
+        disp('Adding datasets to list')
+        for j=1:1:length(temp)
+            cell_images_list{length(cell_images_list)+1} = ...
+                temp{j};
+            disp(['Adding file ' temp{j}]);
+        end
+    end
 end
 
+if isempty(cell_images_list)
+    disp('List is empty or no cell membrane images found');
+    cell_images_list = cell(size(dna_images_list));
+end
+
+disp(' '); print_simple_title('Creating list of protein pattern images');
+protein_images_list = {};
+if isa(prot_images, 'cell' ) && ...
+        ~any(cellfun( @(x)(isa(x,'function_handle')), prot_images ))
+    for i=1:1:length((prot_images))
+        dataset = prot_images{i};
+        temp = ml_ls( dataset );
+        
+        if isempty(protein_images_list)
+            disp('Adding first dataset to list');
+            protein_images_list = temp;
+            for j=1:1:length(protein_images_list)
+                disp(['Adding file ' protein_images_list{j}]);
+            end
+        else
+            disp('Adding another dataset to list')
+            for j=1:1:length(temp)
+                protein_images_list{length(protein_images_list)+1} = ...
+                    temp{j};
+                disp(['Adding file ' temp{j}]);
+            end
+        end
+    end
+else
+    if iscell( prot_images ) && ... 
+            all(cellfun( @(x)(isa(x,'function_handle')), prot_images ))
+        dataset = prot_images;
+        label = label + 1;
+        disp('Adding datasets to list')
+        for j=1:1:length(dataset)
+            protein_images_list{length(protein_images_list)+1} = ...
+                dataset{j};
+            disp(['Adding file function handle ' num2str(j) ' to list']);
+            temp_labels{length(temp_labels)+1} = num2str(label);
+        end
+        clear dataset
+    else
+        dataset = prot_images;
+        temp = ml_ls( dataset );
+        disp('Adding datasets to list')
+        for j=1:1:length(temp)
+            protein_images_list{length(protein_images_list)+1} = ...
+                temp{j};
+            disp(['Adding file ' temp{j}]);
+        end
+    end
+end
+
+if isempty(protein_images_list)
+    disp('List is empty or no protein images found');
+    protein_images_list = cell(size(dna_images_list));
+end
 
 if ischar(options.masks)
     options.masks = ml_ls(options.masks);
 end
 if isempty(options.masks)
-    options.masks = cell(size(dna_images));
+    options.masks = cell(size(dna_images_list));
 end
 
-if isempty(cell_images) && ~isempty(options.protein.type) && strcmp(options.protein.type, 'standardized_map_half-ellipsoid')
-    [cell_images, options] = tcell_setup_options(options);
+if isempty(cell_images_list) && ~isempty(options.protein.type) && ...
+        strcmp(options.protein.type, 'standardized_map_half-ellipsoid')
+    disp('Setting standardized_map_half-ellipsoid model' );
+    [cell_images_list, options] = tcell_setup_options(options);
 end
+
+disp(' ' ); disp('Saving dataset and label information')
+options.dataset.nuclear_membrane_images = dna_images_list;
+options.dataset.cell_membrane_images = cell_images_list;
+options.dataset.protein_images = protein_images_list;
+options.dataset.labels = options.labels;
+if isfield( options, 'labels' )
+    options = rmfield( options, 'labels' );
+end
+
+model.dataset = options.dataset;
 end
 
 function options = setup_model_options(dna_images, cell_images, prot_images, options)
@@ -231,8 +388,6 @@ function options = setup_model_options(dna_images, cell_images, prot_images, opt
 component_struct = struct('type', '', ...
     'name', '', ...
     'id', '');
-
-% add the model file location
 
 options = ml_initparam(options, struct('nucleus', []));
 % xruan 01/05/2016 change ml_initparam(options, component_struct); to ml_initparam(options.nucleus, component_struct);

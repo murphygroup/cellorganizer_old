@@ -52,7 +52,6 @@ elseif nargin == 7
     image_index = 1;
 end
     
-
 isshow = 0;
 
 %s2 is a structure to record which variables are ready
@@ -186,8 +185,9 @@ for i=1:length(f)
                                 sqrt(sum((s2.cellcenter-s2.cellhitpts(end,:)).^2))];
                         else
                             try
-                                imshow(ml_setimglnpixel2(double(s2.celledge), ...
-                                    s2.cellcenter(1:2),a,s2.len),[]);
+                                warning('Unable to hit the target. More than likely object is not closed or an artifact from preprocessing is present. Please verify parameterization or ignore this file from computation.');
+                                %imshow(ml_setimglnpixel2(double(s2.celledge), ...
+                                %    s2.cellcenter(1:2),a,s2.len),[]);
                             catch
                             end
                         end

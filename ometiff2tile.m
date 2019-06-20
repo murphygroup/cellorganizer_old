@@ -28,6 +28,12 @@ function img = ometiff2tile( filename )
 % For additional information visit http://murphylab.web.cmu.edu or
 % send email to murphy@cmu.edu
 
+img = [];
+if nargin == ~1
+  warning('Wrong number of input arguments');
+  return
+end
+
 reader = bfGetReader( filename );
 omeMeta = reader.getMetadataStore();
 size_x = omeMeta.getPixelsSizeX(0).getValue();

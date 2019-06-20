@@ -23,6 +23,7 @@
 % You should have received a copy of the GNU General Public License
 % along with SPHARM-MAT. If not, see <http://www.gnu.org/licenses/>.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % 04/15/2018 xruan change the input and output, and not save intermediate
 % results. 
 % 04/27/2018 xruan change the rotation only along z-axis, which is more

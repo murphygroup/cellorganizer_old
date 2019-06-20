@@ -38,7 +38,7 @@ if nargin<2
 end
 
 limg=bwlabel(img,n);
-objnum=max(limg(:));
+objnum=max(uint8(limg(:)));
         
 lhist=[];
 for i=1:objnum
@@ -47,5 +47,5 @@ end
 [y,maxl]=max(lhist);
 img(limg~=maxl)=0;
 
-[r,c]=find(img==1);
+[r,c]=find(img==max(max(img)));
 obj=[r,c];

@@ -63,7 +63,7 @@ options.targetDirectory = pwd;
 options.prefix = 'img';
 options.compression = 'lzw';
 
-filename = '../demo2D05/lamp2.mat';
+filename = '../demo2D05/model.mat';
 if ~exist( filename )
     warning( [ 'File ' filename ' not found.' ] );
     answer = false;

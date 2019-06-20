@@ -45,7 +45,7 @@ function answer = img2tif( img, filename, compression, index )
 %mmackie 6/5/12
 answer=false;
 if( nargin < 2)
-    disp('img2tif:input not enough, existing method');
+    disp('img2tif:input not enough, exiting method');
     return
 end
 
@@ -60,12 +60,12 @@ end
 
 %Yajing Tang 7/3/13 Check the inputs' types
 if (~isnumeric(img) && ~islogical(img))
-    disp('img2tif:not a valid image, existing method');
+    disp('img2tif:not a valid image, exiting method');
     return;
 end
 
 if (~isstr(filename) || isempty( filename ) )
-    disp('img2tif:filename has to be a non-empty string, existing method');
+    disp('img2tif:filename has to be a non-empty string, exiting method');
     return;
 end
 if isequal(strfind(filename,'.tif'),[]) || (strfind(filename,'.tif')~=(length(filename)-3 ))
@@ -94,12 +94,34 @@ end
 
 %mmackie 6/5/2012
 if index
+    % Map values to indices
+    img_unique = unique(img(:));
+    n_img_unique = length(img_unique);
+    if n_img_unique <= 2^8
+        img2 = zeros(size(img), 'uint8');
+    elseif n_img_unique <= 2^16
+        img2 = zeros(size(img), 'uint16');
+    else
+        warning('Unknown image type, renormalizing and saving as double');
+        img2 = img;
+        for i = 1:size(img2, 3)
+            img2(:,:,i) = double(img2(:,:,i)) / max(reshape(img(:,:,i), 1, []));
+        end
+    end
+    if isinteger(img2)
+        for i = 1:n_img_unique
+            img2(img == img_unique(i)) = i-1;
+        end
+    end
+    img_unique_colors = hsv2rgb([zeros(n_img_unique, 2), img_unique / max(img_unique)]);
+    img = img2;
+    
     %save first channel
-    imwrite( img(:,:,1), gray, filename, 'Resolution', 300, 'Compression', compression);
+    imwrite( img(:,:,1), gray(64), filename, 'Resolution', 300, 'Compression', compression);
     %append other channels to the first channel
     if size(img,3) > 1
         for i=2:1:size(img,3)
-            imwrite( img(:,:,i), gray, filename, 'Resolution', 300, 'WriteMode', 'append', 'Compression', compression );
+            imwrite( img(:,:,i), gray(64), filename, 'Resolution', 300, 'WriteMode', 'append', 'Compression', compression );
         end
     end
 elseif ndims(img)==4

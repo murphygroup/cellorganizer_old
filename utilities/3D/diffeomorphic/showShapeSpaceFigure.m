@@ -60,8 +60,16 @@ param = ml_initparam(param, struct( ...
     ));
 cellnums = 1:nimgs;
 
-if ~exist('labels', 'var') || isempty(labels)
-    labels = 1:nimgs;
+%logic: Check for model.dataset.labels 
+%       => if not there check for non empty labels in options structure
+%       => if not there set it 1 for an array of the length of images
+if isfield(model, 'dataset') && isfield(model.dataset, 'labels') && ~isempty(model.dataset.labels)
+    [ulabels, ~, labels] = unique(model.dataset.labels);
+elseif exist('labels', 'var') && ~isempty(labels)
+    [ulabels, ~, labels] = unique(labels);
+else
+    labels  = ones(1, nimgs); %unique(1:nimgs);
+    ulabels = [1]; 
 end
 
 skipmissing = param.skipmissing;
@@ -96,7 +104,6 @@ if rebuild_pos
         
         labels = labels(keepinds);
         cellnums = cellnums(keepinds);
-        
     else
         d = model.cellShapeModel.distances;
     end
@@ -109,9 +116,6 @@ else
     %     embed_pos = model.cellShapeModel.positions(keepinds,:);
 end
 
-[ulabels, ~, labelinds ] = unique(labels);
-
-labels = labelinds;
 
 if strcmpi(class(cm), 'function_handle')
     colors = cm(length(ulabels))*0.8;

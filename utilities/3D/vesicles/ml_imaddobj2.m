@@ -1,4 +1,4 @@
-function img2 = ml_imaddobj2(img,obj,param)
+function [img2,obj_keep] = ml_imaddobj2(img,objs,param, options)
 %ML_IMADDOBJ2 Add an object into an image.
 %   IMG2 = ML_IMADDOBJ2(IMG,OBJ) adds an [object] into the [image] IMG and
 %   returns the new image. The position of OBJ is determined by its 
@@ -70,17 +70,27 @@ end
 param = ml_initparam(param, ...
     struct('method','replace','pos',[],'posref','cof', 'objectmethod', []));
 
-img2 = img;
+%adding slice above and below to check for oob vesicles
+cell2 = false(size(options.cell) + [0,0,2]);
+cell2(:,:,2:end-1) = options.cell;
+
+img2 = zeros(size(img) + [0,0,2], class(img));
+img2(:,:,2:end-1) = img;
 imageSize = size(img2);
 %%
 %added by DPS 3/18/12
-if iscell(obj)
-  objcell = obj;
+if iscell(objs)
+  objcell = objs;
+  objs_keep = false(size(objcell));
 end
 for i = 1:size(param.pos,1)
     if exist('objcell','var')
       obj = objcell{i};
     end
+    
+    %account for extra slice added to image size for oob check
+    obj(:,3) = obj(:,3) + 1;
+
     if ~isempty(param.pos)
        switch param.posref
           case 'cof'
@@ -99,7 +109,6 @@ for i = 1:size(param.pos,1)
         %warning('The object is out of the image range!')
         obj(idx,:) = [];
     end
-
     objidx = sub2ind(imageSize,obj(:,1),obj(:,2),obj(:,3));
 
     if ~isempty(obj)
@@ -111,12 +120,11 @@ for i = 1:size(param.pos,1)
                   obj(:,4) = 255;
               end
                   
-%             for k=1:size(img2,3)
-%                 img3 = img2(:,:,k);
-%                 img3(objidx) = obj(:,3);
-%                 img2(:,:,k) = img3;
-%             end
-            img2(objidx) = obj(:,4);
+            if mean(cell2(objidx)) >= (1-options.oobthresh)  
+                img2(objidx) = obj(:,4);
+                obj_keep(i) = true;
+            end
+            img2 = img2 .* cell2;
           case 'add'
 %             for k=1:size(img2,3)
 %                 img3 = img2(:,:,k);
@@ -159,11 +167,13 @@ for i = 1:size(param.pos,1)
                 keyboard
             end
             img2(objidx) = img2(objidx)+obj(:,4);
-          
+            obj_keep(i) = true;
           otherwise
               error(['Unrecognized object adding method: ' param.method]);
       end
     end
 end
+%remove extra slices added for oob check
+img2 = img2(:, :, 2:end-1);
 %end 3/18/12 change
 %%

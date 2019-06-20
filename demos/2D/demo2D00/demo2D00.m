@@ -17,7 +17,7 @@ function answer = demo2D00()
 
 % Ivan E. Cao-Berg (icaoberg@cmu.edu)
 %
-% Copyright (C) 2012-2018 Murphy Lab
+% Copyright (C) 2012-2019 Murphy Lab
 % Computational Biology Department
 % School of Computer Science
 % Carnegie Mellon University
@@ -49,7 +49,6 @@ if ~isdeployed()
 end
 
 disp( 'demo2D00' );
-disp( 'The estimated running time is 38 seconds. Please wait.' );
 
 options.seed = 12345;
 try
@@ -64,18 +63,13 @@ options.compression = 'lzw';
 options.debug = false;
 options.temporary_results = [ pwd filesep 'temporary_results' ];
 options.verbose = false;
-options.display = false;
 options.synthesis = 'all';
 options.output.tifimages = false;
 options.output.OMETIFF = true;
+options.numberOfSynthesizedImages = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%modify the next line to generate more images
-options.numberOfSynthesizedImages = 1;
-
-tic
 answer = slml2img( {'../../../models/2D/nucleolus.mat', ...
   '../../../models/2D/lysosome.mat', ...
   '../../../models/2D/endosome.mat', ...
   '../../../models/2D/mitochondrion.mat'}, options );
-toc

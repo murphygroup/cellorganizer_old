@@ -9,18 +9,18 @@ function answer = demo3D25()
 % SBML-Spatial(v0.82a) formatted .xml file containing constructed solid
 % geometry(CSG) primitives for lysosomes and parametric objects for the
 % cell and nuclear shapes.
-% 
+%
 % These files can then be read into VCell using the built in importer or
 % CellBlender using the helper function provided in this distribution.
 %
 % Input
 % -----
 % * valid SBML model
-% 
+%
 % Output
 % ------
 % * three TIFF files
-% * XML file with primitives for lysosomes and parametric objects 
+% * XML file with primitives for lysosomes and parametric objects
 
 % Devin Sullivan
 %
@@ -51,9 +51,9 @@ function answer = demo3D25()
 % DO NOT MODIFY THIS BLOCK
 answer = false;
 if ~isdeployed()
-  current_path = which(mfilename);
-  [current_path, filename, extension] = fileparts( current_path );
-  cd(current_path);
+    current_path = which(mfilename);
+    [current_path, filename, extension] = fileparts( current_path );
+    cd(current_path);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -33,33 +33,33 @@ if isfield( param, 'protein' ) && ...
 end
 
 if ismember( param.train.flag, {'cell'} )
-   if isfield( model, 'nuclearShapeModel' )
-       model = rmfield( model, 'nuclearShapeModel' );
-   end
-   
-   if isfield( model, 'proteinModel' )
-       model = rmfield( model, 'proteinModel' );
-   end
+    if isfield( model, 'nuclearShapeModel' )
+        model = rmfield( model, 'nuclearShapeModel' );
+    end
+    
+    if isfield( model, 'proteinModel' )
+        model = rmfield( model, 'proteinModel' );
+    end
 end
 
 if ismember( param.train.flag, {'protein'} )
-   if isfield( model, 'nuclearShapeModel' )
-       model = rmfield( model, 'nuclearShapeModel' );
-   end
-   
-   if isfield( model, 'cellShapeModel' )
-       model = rmfield( model, 'cellShapeModel' );
-   end
+    if isfield( model, 'nuclearShapeModel' )
+        model = rmfield( model, 'nuclearShapeModel' );
+    end
+    
+    if isfield( model, 'cellShapeModel' )
+        model = rmfield( model, 'cellShapeModel' );
+    end
 end
 
 if ismember( param.train.flag, {'nuclear'} )
-   if isfield( model, 'cellShapeModel' )
-       model = rmfield( model, 'cellShapeModel' );
-   end
-   
-   if isfield( model, 'proteinShapeModel' )
-       model = rmfield( model, 'proteinShapeModel' );
-   end
+    if isfield( model, 'cellShapeModel' )
+        model = rmfield( model, 'cellShapeModel' );
+    end
+    
+    if isfield( model, 'proteinShapeModel' )
+        model = rmfield( model, 'proteinShapeModel' );
+    end
 end
 
 disp('Saving model structure to disk');

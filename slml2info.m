@@ -203,9 +203,9 @@ else
         movefile( './html', './report' );
     end
 
-    % if exist( './index.m' )
-    %     delete( './index.m' );
-    % end
+    if exist( './index.m' )
+         delete( './index.m' );
+    end
     answer = true;
 end
 end%slml2info

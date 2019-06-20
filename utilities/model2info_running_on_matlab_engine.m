@@ -37,7 +37,7 @@ if isfield( model, 'name' )
     fprintf( fileID, ['''' model.name '''' ';\n'] );
 else
     fprintf( fileID,'%%%%%% Model name\n' );
-    fprintf( fileID, ['''UNSET''' '\n'] );
+    fprintf( fileID, ['''UNSET''' ';\n'] );
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MODEL.ID %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -46,7 +46,7 @@ if isfield( model, 'id' )
     fprintf( fileID, ['''' model.id '''' ';\n'] );
 else
     fprintf( fileID,'%%%%%% Model ID\n' );
-    fprintf( fileID, ['''UNSET''' '\n'] );
+    fprintf( fileID, ['''UNSET''' ';\n'] );
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DIMENSIONALITY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -54,7 +54,7 @@ if isfield( model, 'dimensionality' )
     fprintf( fileID,'%%%%%% Dimensionality\n' );
     fprintf( fileID, ['''' model.dimensionality ''''  ';\n'] );
 else
-    fprintf( 'Dimensionality: UNSET\n' );
+    fprintf( 'Dimensionality: UNSET;\n' );
     warning( 'This is an invalid model' );
 end
 
@@ -106,14 +106,23 @@ catch
     fprintf( fileID,'\n%%%%%% Protein pattern model information\n' );
     fprintf( fileID,'%% The model file does not contain an instance of the submodel.\n' );
 end
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATASET Information %%%%%%%%%%%%%%%%%%%%%%%%%%
+if isfield(model, 'dataset')
+	answer = datasetinfo2html(model, fileID);
+	if isfield(model.dataset, 'segmentation')
+		ans_seg = segmentation2html(model, fileID, 'html');
+	end
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% IS DIFFEOMORPHIC? %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if is_diffeomorphic( model )
     fprintf(fileID,'%%%%%% Additional Figures\n');
     f = figure('visible','off');
     nimgs = size(model.cellShapeModel.positions,1);
-    nlabels = size(model.cellShapeModel.positions,1);
-    labels = reshape(repmat([1:nlabels],ceil(nimgs/nlabels),1),[],1);
+    if isfield(options, 'labels')
+        labels = options.labels;
+    else 
+        labels = [];
+    end
     options.plot_dims = [1,2];
     options.subsize = 1000;
     showShapeSpaceFigure( model, labels, options );
@@ -138,7 +147,12 @@ end
 if is_pca_framework( model )
     fprintf(fileID,'%%%%%% Additional Figures\n');
     f = figure('visible','off');
-    showPCAShapeSpaceFigure(model);
+    if isfield(options, 'labels')
+        labels = options.labels;
+    else 
+        labels = [];
+    end
+    showPCAShapeSpaceFigure( model, labels, options );
     saveas( f, 'show_shape_space.png', 'png' );
     I = imread( 'show_shape_space.png' );
     I = imresize( I, 0.50 );
@@ -269,4 +283,5 @@ else
     fprintf( fileID, ['%% model.resolution\n'] );
     fprintf( fileID, ['''UNSET''' ';\n'] );
 end
+fprintf( fileID, ['\n'] );
 end

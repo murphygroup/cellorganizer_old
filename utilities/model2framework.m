@@ -9,7 +9,7 @@ function [ nucimg, cellimg, outres, options ] = model2framework( model, options 
 
 % Author: Ivan E. Cao-Berg (icaoberg@cs.cmu.edu)
 %
-% Copyright (C) 2012-2016 Murphy Lab
+% Copyright (C) 2012-2019 Murphy Lab
 % Lane Center for Computational Biology
 % School of Computer Science
 % Carnegie Mellon University
@@ -95,6 +95,8 @@ function [ nucimg, cellimg, outres, options ] = model2framework( model, options 
 % March 8, 2016 X. Ruan change param to options, fix bug for debug.
 %
 % Feb 17, 2018 X. Ruan add code for 2D PCA model
+%
+% May 20, 2019, X. Ruan add resolution for SPHARM-RPDM method synthesis
 
 if nargin > 2
     error('Wrong number of input arguments.' );
@@ -110,6 +112,12 @@ options = ml_initparam( options, struct( ...
     'display', false, ...
     'verbose', false ...
     ));
+
+nucimg = [];
+cellimg = [];
+outres = [];
+options.nucmesh = [];
+options.cellmesh = [];
 
 %icaoberg 7/1/2013
 if length(model) > 1 || ( isa( model, 'cell' ) && length(model) == 1 )
@@ -129,9 +137,6 @@ if isfield( model, 'dimensionality' )
 else
     %icaoberg 9/28/2012
     disp( 'Unable to set dimensionality. Exiting method' );
-    nucimg = [];
-    cellimg = [];
-    outres = [];
     return
 end
 
@@ -139,7 +144,8 @@ end
 if ~isfield( options, 'synthesis' ) || ...
         ( ~strcmpi( options.synthesis, 'all' ) && ...
         ~strcmpi( options.synthesis, 'framework' ) && ...
-        ~strcmpi( options.synthesis, 'nucleus' ) )
+        ~strcmpi( options.synthesis, 'nucleus' ) && ...
+        ~strcmpi( options.synthesis, 'cell' ) )
     disp( 'Unrecognized synthesis flag. Setting to default value' );
     options.synthesis = 'all';
 end
@@ -147,7 +153,7 @@ end
 switch lower(dimensionality)
     case '2d'
         %generate 2D framework
-        
+
         %generate cell framework
         %yajing 7/2/2013 Added spherical_cell case from bob's update
         if options.spherical_cell
@@ -156,7 +162,7 @@ switch lower(dimensionality)
                 isfield( model.cellShapeModel, 'type' ) && ...
                 strcmpi( model.nuclearShapeModel.type, 'diffeomorphic' ) && ...
                 strcmpi( model.cellShapeModel.type, 'diffeomorphic' )
-            
+
             %use the same code for 3D, returns RGB image
             [nucimg, cellimg, options] = model2diffeomorphicInstance( model, options );
             if ~isfield(options, 'resolution')
@@ -175,62 +181,80 @@ switch lower(dimensionality)
             for i = 1 : size( cellEdge, 1)
                 cellimg(cellEdge(i, 1), cellEdge(i, 2)) = 1;
             end
-        % xruan 02/17/2018 add synthesize method for PCA model
+            % xruan 02/17/2018 add synthesize method for PCA model
         elseif  isfield( model.nuclearShapeModel, 'type' ) && ...
                 isfield( model.cellShapeModel, 'type' ) && ...
                 strcmpi( model.nuclearShapeModel.type, 'pca' ) && ...
                 strcmpi( model.cellShapeModel.type, 'pca' )
-            if strcmp(options.pca_synthesis_method, 'reconstruction')
-                [nucimg, cellimg] = pca_reconstruct_training_images( model, options );
-            elseif strcmp(options.pca_synthesis_method, 'random_sampling')
+            if isfield( options.model.pca, 'pca_synthesis_method' )
+                if strcmp(options.model.pca.pca_synthesis_method, 'reconstruction')
+                    [nucimg, cellimg] = pca_reconstruct_training_images( model, options );
+                elseif strcmp(options.model.pca.pca_synthesis_method, 'random_sampling')
+                    [nucimg, cellimg] = pca_random_sample_images( model, options );
+                end
+            else
+                disp('Synthesis method not set. Setting to random_sampling')
                 [nucimg, cellimg] = pca_random_sample_images( model, options );
-            end                
+            end
         else
             [nucimg,cellimg] = ml_gencellcomp2D( model, options );
         end
-        
+
         %icaobeg 5/18/2013
         %make sure the nuclear edge is not empty
         %the nuclear edge can never be empty
-        if strcmpi( options.synthesis, 'nucleus' ) && isempty( nucimg )  
+        if ( strcmpi( options.synthesis, 'nucleus' ) || ...
+                strcmpi( options.synthesis, 'framework' ) || ...
+                strcmpi( options.synthesis, 'all' ) ...
+                ) && isempty( nucimg )
             disp( 'Nuclear image is empty. Returning empty framework.' );
             outres = [];
             return
         end
-        
-        if strcmpi( options.synthesis, 'framework' ) && ...
-                strcmpi( options.synthesis, 'all' ) && ...
-                isempty( nucimg ) && isempty( cellimg )
-                            disp( 'Both nuclear and cell images are empty. Returning empty framework.' );
-                nucimg = [];
-                cellimg = [];
-                return
+
+        if ( strcmpi( options.synthesis, 'cell' ) || ...
+                strcmpi( options.synthesis, 'framework' ) || ...
+                strcmpi( options.synthesis, 'all' ) ...
+                ) && isempty( cellimg )
+            disp( 'Cell image is empty. Returning empty framework.' );
+            outres = [];
+            return
         end
-        
-        if strcmpi( options.synthesis, 'framework' ) || ...
-                strcmpi( options.synthesis, 'all' )
-            if isempty( cellimg )
-                disp( 'Cell image is empty. Returning empty framework.' );
-                nucimg = [];
-                cellimg = [];
-                return
-            else
-                [ croppedcellimg, box ] = cropImg( cellimg );
-                nucimg = nucimg(box(1):box(2),box(3):box(4),:);
-                cellimg = cellimg(box(1):box(2),box(3):box(4),:);
-            end
-        else
-            if isempty( nucimg )
-                disp( 'Nuclear image is empty. Returning empty framework.' );
-                nucimg = [];
-                cellimg = [];
+
+        if options.framework_cropping
+            if strcmpi( options.synthesis, 'framework' ) || ...
+                    strcmpi( options.synthesis, 'all' )
+                [ croppedcellimg, cropbounds ] = cropImg( cellimg );
+                nucimg = nucimg(cropbounds(1):cropbounds(2),cropbounds(3):cropbounds(4),:);
+                cellimg = cellimg(cropbounds(1):cropbounds(2),cropbounds(3):cropbounds(4),:);
             else
                 %icaoberg 02/01/2016
-                [ croppednucimg, box ] = cropImgND( nucimg );
-                nucimg = nucimg(box(1):box(2),box(3):box(4),:);
+                [ croppednucimg, cropbounds ] = cropImgND( nucimg );
+                nucimg = nucimg(cropbounds(1):cropbounds(2),cropbounds(3):cropbounds(4),:);
+            end
+
+            if isstruct(options.nucmesh)
+                options.nucmesh.vertices(:, 1) = options.nucmesh.vertices(:, 1) - (cropbounds(3)-1);
+                options.nucmesh.vertices(:, 2) = options.nucmesh.vertices(:, 2) - (cropbounds(1)-1);
+                % options.nucmesh.vertices(:, 3) = options.nucmesh.vertices(:, 3) - cropbounds(5);
+            end
+            if isstruct(options.cellmesh)
+                options.cellmesh.vertices(:, 1) = options.cellmesh.vertices(:, 1) - (cropbounds(3)-1);
+                options.cellmesh.vertices(:, 2) = options.cellmesh.vertices(:, 2) - (cropbounds(1)-1);
+                % options.cellmesh.vertices(:, 3) = options.cellmesh.vertices(:, 3) - cropbounds(5);
+            end
+        else
+            if strcmpi( options.synthesis, 'framework' ) || ...
+                    strcmpi( options.synthesis, 'all' )
+                cropbounds = [1, size(cellimg, 1), 1, size(cellimg, 2), 1, size(cellimg, 3)];
+            else
+                cropbounds = [1, size(nucimg, 1), 1, size(nucimg, 2), 1, size(nucimg, 3)];
             end
         end
-        
+        options.framework_xrange = cropbounds(3:4);
+        options.framework_yrange = cropbounds(1:2);
+        % options.framework_zrange = cropbounds(5:6);
+
         %D. Sullivan 3/3/12
         %Set the output resolution
         if isfield( options,'resolution' )
@@ -245,20 +269,19 @@ switch lower(dimensionality)
         end
     case '3d'
         %D. Sullivan 3/5/13
-        %check if we already have a framework (as in from raw data)
-        if isfield( options, 'instance') && ...
-                isfield( options.instance, 'cell' ) && ... 
-                options.instance.cell && ...
-                isfield( options.instance, 'nucleus' ) && ...
-                options.instance.nucleus 
-            %check if the images are the same size in all dimensions
-            if all(size(options.cell) == size(options.nucleus))
-                nucimg = options.nucleus;
-                
-                if isfield( options, 'cell' )
-                    cellimg = options.cell;
+        disp('Check if a framework is present (as in from raw data)');
+        if ( isfield( options, 'cell' ) && isfield( options.cell, 'instance' ) ) && ...
+                (isfield( options, 'nucleus' ) && isfield( options.nucleus, 'instance' ))
+            if all(size(options.cell.instance) == size(options.nucleus.instance))
+                disp('Setting nuclear membrane instance from raw data');
+                nucimg = options.nucleus.instance;
+
+                disp('Setting cell membrane instance from raw data');
+                if isfield( options.cell, 'instance' )
+                    cellimg = options.cell.instance;
                 end
-                
+
+                disp('Setting framework resolution');
                 if isfield( options, 'resolution' )
                     if isfield(options.resolution, 'cell' )
                         outres = options.resolution.cell;
@@ -268,128 +291,198 @@ switch lower(dimensionality)
                 end
                 return
             end
-            % xruan 03/08/2016
+
             if options.debug
                 warning('Cell and nucleus found, but the images were not the same size, synthesizing new framework');
             end
         end
-        
+
         %icaoberg march 17, 2014
         if strcmpi( options.synthesis, 'nucleus' ) && ...
                 strcmpi( model.nuclearShapeModel.type, 'cylindrical_surface' )
             %generate 3D framework
-            
+
             %icaoberg 8/7/2013
             %resolution is always needed
             options.resolution.nucleus = model.nuclearShapeModel.resolution;
-            
+
             %D. Sullivan 2/22/13 added param structure to pass the cell and
             %object resolutions
             instance = tp_genspsurf(model.nuclearShapeModel,options);
             %instance = tp_genspsurf(model.nuclearShapeModel);
-            
+
             %disp('Generating nuclear shape instance');
             %Yajing Tang 7/2/2013 Added spherical_cell case from Bob's update
-            [nucimg,nucsurf,outres] = tp_gennucshape(instance,options);
-            
-            nucleus.nucimgsize = size(nucimg);
-            nucleus.nucsurf = nucsurf;
-            nucleus.nucimg = nucimg;
-            
+            tp_gennucshape_result = tp_gennucshape(instance,options);
+            nucimg = tp_gennucshape_result.nucimg;
+            nucsurf = tp_gennucshape_result.nucsurf;
+            options.nucmesh = tp_gennucshape_result.nucmesh;
+            outres = tp_gennucshape_result.outres;
+
             %icaoberg 02/01/2016
-            [ croppednucimg, box ] = cropImgND( nucimg );
-            nucimg = nucimg(box(1):box(2),box(3):box(4),:);
-            cellimg = [];
-            
-        elseif ( strcmpi( options.synthesis, 'framework' ) || ...
+            if options.framework_cropping
+                [ croppednucimg, cropbounds ] = cropImgND( nucimg );
+                nucimg = nucimg(cropbounds(1):cropbounds(2),cropbounds(3):cropbounds(4),:);
+                cellimg = [];
+
+                if isstruct(options.nucmesh)
+                    options.nucmesh.vertices(:, 1) = options.nucmesh.vertices(:, 1) - (cropbounds(3)-1);
+                    options.nucmesh.vertices(:, 2) = options.nucmesh.vertices(:, 2) - (cropbounds(1)-1);
+                    % options.nucmesh.vertices(:, 3) = options.nucmesh.vertices(:, 3) - cropbounds(5);
+                    nucmesh = options.nucmesh;
+                end
+            else
+                cropbounds = [1, size(nucimg, 1), 1, size(nucimg, 2), 1, size(nucimg, 3)];
+            end
+            options.framework_xrange = cropbounds(3:4);
+            options.framework_yrange = cropbounds(1:2);
+            options.framework_zrange = cropbounds(5:6);
+
+
+        elseif ( strcmpi( options.synthesis, 'cell' ) || ...
+                strcmpi( options.synthesis, 'framework' ) || ...
                 strcmpi( options.synthesis, 'all' ) ) && ...
                 strcmpi( model.nuclearShapeModel.type, 'cylindrical_surface' ) && ...
                 strcmpi( model.cellShapeModel.type, 'ratio' )
-            
-            if isfield( options, 'nucleus' )
+
+            if (isfield( options, 'nucleus' )  && isfield( options.nucleus, 'instance' ))
                 if options.verbose
                     disp('Generating nuclear shape from nuclear image');
                 end
-                [nucimg, nucsurf, outres] = generate_nuclear_shape_from_image( options.nucleus, options );
+                [nucimg, nucsurf, outres] = generate_nuclear_shape_from_image( options.nucleus.instance, options );
                 nucleus.nucimgsize = size(nucimg);
                 nucleus.nucsurf = nucsurf;
                 nucleus.nucimg = nucimg;
-                
+                nucleus.instance = instance;
+
                 if options.spherical_cell
                     [cellimg,cellsurf] = rm_gensphere(1.0);
                 else
-                    [cellimg,nucimg] = ml_gencellshape3d( ...
+                    ml_gencellshape3d_result = ml_gencellshape3d( ...
                         model.cellShapeModel, nucleus,options );
+                    cellimg = ml_gencellshape3d_result.cellimg;
+                    nucimg = ml_gencellshape3d_result.nucimg;
+                    options.cellmesh = ml_gencellshape3d_result.cellmesh;
                 end
             else
                 if options.verbose
                     disp( 'Generating nuclear shape' );
                 end
                 instance = tp_genspsurf(model.nuclearShapeModel,options);
-                
+
                 %disp('Generating nuclear shape instance');
                 %Yajing Tang 7/2/2013 Added spherical_cell case from Bob's update
                 if options.spherical_cell
                     % this doesn't work yet
                     [nucimg,nucsurf] = rm_gensphere([1024*1.25, 1024*1.25, 5*instance.height],[0.33, 0.33, 0.33]);
                 else
-                    [nucimg,nucsurf,outres] = tp_gennucshape(instance,options);
+                    tp_gennucshape_result = tp_gennucshape(instance,options);
+                    nucimg = tp_gennucshape_result.nucimg;
+                    nucsurf = tp_gennucshape_result.nucsurf;
+                    options.nucmesh = tp_gennucshape_result.nucmesh;
+                    outres = tp_gennucshape_result.outres;
                 end
-                
+
                 nucleus.nucimgsize = size(nucimg);
                 nucleus.nucsurf = nucsurf;
                 nucleus.nucimg = nucimg;
-                
+                nucleus.instance = instance;
+
                 if options.verbose
                     disp('Generating cell shape');
                 end
                 if options.spherical_cell
                     [cellimg,cellsurf] = rm_gensphere(1.0);
                 else
-                    [cellimg,nucimg] = ml_gencellshape3d( ...
+                    ml_gencellshape3d_result = ml_gencellshape3d( ...
                         model.cellShapeModel, nucleus,options );
+                    cellimg = ml_gencellshape3d_result.cellimg;
+                    nucimg = ml_gencellshape3d_result.nucimg;
+                    options.cellmesh = ml_gencellshape3d_result.cellmesh;
                 end
             end
         elseif strcmpi( model.nuclearShapeModel.type, 'diffeomorphic' ) && ...
                 strcmpi( model.cellShapeModel.type, 'diffeomorphic' )
             %icaoberg 10/1/2012
-            
+
             outres = options.resolution.cell;
             [nucimg, cellimg, options] = model2diffeomorphicInstance( model, options );
-        
-        elseif ( strcmpi( options.synthesis, 'framework' ) || ...
-                strcmpi( options.synthesis, 'all' )) && ...
-                strcmpi( model.nuclearShapeModel.class, 'csgo' ) && ...
+
+        elseif strcmpi( model.nuclearShapeModel.class, 'csgo' ) && ...
                 strcmpi( model.cellShapeModel.class, 'csgo' ) && ...
                 strcmpi( model.nuclearShapeModel.type, 'half_ellipsoid' ) && ...
                 strcmpi( model.cellShapeModel.type, 'half_ellipsoid' )
-                
-                outres = [];
-                disp( 'Generating half-ellipsoid geometry on model' );
-                [nucimg, cellimg] = ellipsoid_geometry( model );
-                
-        % xruan 09/17/2018 add synthesize method for SPHARM-RPDM model
+
+            outres = [];
+            disp( 'Generating half-ellipsoid geometry on model' );
+            [nucimg, cellimg] = ellipsoid_geometry( model );
+
+            % xruan 09/17/2018 add synthesize method for SPHARM-RPDM model
         elseif  isfield( model.nuclearShapeModel, 'type' ) && ...
                 isfield( model.cellShapeModel, 'type' ) && ...
                 strcmpi( model.nuclearShapeModel.type, 'spharm_rpdm' ) && ...
                 strcmpi( model.cellShapeModel.type, 'spharm_rpdm' )
             if strcmp(options.spharm_rpdm.synthesis_method, 'reconstruction') || strcmp(options.spharm_rpdm.synthesis_method, 'random_sampling')
-                [nucimg, cellimg] = spharm_rpdm_sample_or_reconstruct_images( model, options );
-            end  
+                % xruan 05/20/2019 check if there is resolution for
+                % protein, if so, use 'cell' as the resolution for framework
+                if strcmpi(options.synthesis, 'all') && isfield(options.resolution, 'cell')
+                    options.spharm_rpdm.synthesis_resolution = options.resolution.cell;
+                end
+
+                spharm_rpdm_sample_or_reconstruct_images_result = spharm_rpdm_sample_or_reconstruct_images( model, options );
+                nucimg = spharm_rpdm_sample_or_reconstruct_images_result.nucimg;
+                cellimg = spharm_rpdm_sample_or_reconstruct_images_result.cellimg;
+                options.nucmesh = spharm_rpdm_sample_or_reconstruct_images_result.nucmesh;
+                options.cellmesh = spharm_rpdm_sample_or_reconstruct_images_result.cellmesh;
+            end
             outres = options.resolution.cell;
         else
             %icaoberg 10/1/2012
             warning( 'CellOrganizer: Unrecognized model type or combination of model types.' );
             nucimg = [];
+        end
+
+        if strcmpi( options.synthesis, 'nucleus' )
             cellimg = [];
+        elseif strcmpi( options.synthesis, 'cell' )
+            nucimg = [];
         end
-        
-        [~, cropbounds ] = cropImg(nucimg+cellimg);
-        if ~isempty(cropbounds)
-            nucimg = nucimg(cropbounds(1):cropbounds(2), cropbounds(3):cropbounds(4),:);
-            cellimg = cellimg(cropbounds(1):cropbounds(2), cropbounds(3):cropbounds(4),:);
+
+        cropbounds = [];
+        if options.framework_cropping
+            if ~isempty(nucimg) && ~isempty(cellimg)
+                [~, cropbounds] = cropImg(nucimg+cellimg);
+            elseif ~isempty(nucimg)
+                [~, cropbounds] = cropImg(nucimg);
+            elseif ~isempty(cellimg)
+                [~, cropbounds] = cropImg(cellimg);
+            end
         end
-        
+
+        if options.framework_cropping && ~isempty(cropbounds)
+            if ~isempty(nucimg)
+                nucimg = nucimg(cropbounds(1):cropbounds(2), cropbounds(3):cropbounds(4),:);
+            end
+            if ~isempty(cellimg)
+                cellimg = cellimg(cropbounds(1):cropbounds(2), cropbounds(3):cropbounds(4),:);
+            end
+            if isstruct(options.nucmesh)
+                options.nucmesh.vertices(:, 1) = options.nucmesh.vertices(:, 1) - (cropbounds(3)-1);
+                options.nucmesh.vertices(:, 2) = options.nucmesh.vertices(:, 2) - (cropbounds(1)-1);
+                % options.nucmesh.vertices(:, 3) = options.nucmesh.vertices(:, 3) - cropbounds(5);
+            end
+            if isstruct(options.cellmesh)
+                options.cellmesh.vertices(:, 1) = options.cellmesh.vertices(:, 1) - (cropbounds(3)-1);
+                options.cellmesh.vertices(:, 2) = options.cellmesh.vertices(:, 2) - (cropbounds(1)-1);
+                % options.cellmesh.vertices(:, 3) = options.cellmesh.vertices(:, 3) - cropbounds(5);
+            end
+        else
+            cropbounds = [1, size(nucimg, 1), 1, size(nucimg, 2), 1, size(nucimg, 3)];
+        end
+        options.framework_xrange = cropbounds(3:4);
+        options.framework_yrange = cropbounds(1:2);
+        options.framework_zrange = cropbounds(5:6);
+
     otherwise
         return
 end

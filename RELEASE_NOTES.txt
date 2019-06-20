@@ -1,9 +1,23 @@
+CellOrganizer v2.8.1
+====================
+Fixes
+-----
+* Display shape space when dataset field is not present or empty.
+* Generation of watertight SBML Spatial output has been corrected for translation errors.
+
+Other
+-----
+* The following models have been rebuilt using this version of CellOrganizer. Updated models can be found in the model repository.
+	* 2D HeLa diffeomorphic framework
+	* 2D HeLa PCA framework
+	* 2D HeLa classic framework
+* CellOrganizer for Galaxy now Galaxy server v19.05
+
 CellOrganizer v2.8.0
 ====================
 Features
 --------
-* Added improved model for generating protein distributions during T cell synapse formation that 
-  only requires annotation of cell couples at a single time point model and improves synapse alignment. Includes training, synthesis and info demos.
+* Added improved model for generating protein distributions during T cell synapse formation that only requires annotation of cell couples at a single time point model and improves synapse alignment. Includes training, synthesis and info demos.
 * Added SPHARM-RPDM model for 3D cell and nuclear shapes (see https://doi.org/10.1093/bioinformatics/bty983). Includes training, synthesis and info demos.
 
 Fixes
@@ -13,14 +27,23 @@ Fixes
 Enhancements
 ------------
 * Modularized and cleaned up img2slml.
-* Documented mandatory and nonmandatory options for training and synthesis of all models
+* Documented mandatory and nonmandatory options for training and synthesis of all models.
 * Modified PCA, SPHARM-RPDM, and T cell model options structure.
+* Enhanced SBML Spatial output
+    ** SBML Spatial output can now include meshes for the whole framework
+    and CSG objects for vesicles.
 
+    ** SBML Spatial output can now include watertight meshes generated
+    directly from SPHARM and ratio models.
+
+    ** SBML Spatial output updated to comply with draft specification 0.93
+    from December 2018 and to be importable by an upcoming version of
+    CellBlender (available in CellBlender repository version since Apr 26,
+    2019).
 
 Other
 -----
 * The following demos have been deprecated demo2D03, demo3D03, demo3D06, demo3D18, demo3D21, demo3D23, demo3D24 and demo3D27.
-
 
 CellOrganizer v2.7.2
 ====================
@@ -52,19 +75,19 @@ CellOrganizer v2.7.0
 ====================
 Features
 --------
-* Included new model class/type: constructive_geometry/half-ellipsoid
-* Included new model class/type: framework/pca
-* Included support for OME.TIFF with regions of interest
-* Included bash scripts to run demos from compiled versions of the main functions
+* Included new model class/type: constructive_geometry/half-ellipsoid.
+* Included new model class/type: framework/pca.
+* Included support for OME.TIFF with regions of interest.
+* Included bash scripts to run demos from compiled versions of the main functions.
 
 Enhancements
 ------------
-* img2slml now checks the combination of model class and type for every submodel before attempting to extract parameters from image 
+* img2slml now checks the combination of model class and type for every submodel before attempting to extract parameters from image. 
 * Improved pipeline so that CellOrganizer will stop computation and report to user if no images are found in the path or if software fails to extract parameters.
-* Added demo3D44 to show how to synthesize from a model class/type constructive_geomertry/half-ellipsoid
-* Added a battery of unit test for demos using Matlab testing framework
+* Added demo3D44 to show how to synthesize from a model class/type constructive_geomertry/half-ellipsoid.
+* Added a battery of unit test for demos using Matlab testing framework.
 * Added demo3D45 to show how to use OME.TIFF files with ROIs.
-* Added demo2D05, demo2D06, demo2D07 to show how to train and synthesize from a classtype framework/pca model
+* Added demo2D05, demo2D06, demo2D07 to show how to train and synthesize from a classtype framework/pca model.
 
 CellOrganizer v2.6.0
 ====================
@@ -78,7 +101,7 @@ Bioformats.
 
 Enhancements
 ------------
-* Included a new synthesis option named 'overwrite_synthetic_instances' that allows the user to to stop and resume
+* Included a new synthesis option named 'overwrite_synthetic_instances' that allows the user to to stop and resume.
 synthesis of large image collection without overwriting existing images.
 * Included demo3D34 to show how to use new synthesis output options 'SBMLSpatial3' and 'OMETIFF'.
 * Included demo3Dtcell_train to show how to train a T cell model.

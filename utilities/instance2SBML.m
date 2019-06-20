@@ -207,62 +207,62 @@ wrapperNode.appendChild(ListOfUnitDefinitions);
 %%%
 
 %%%Set up the Geometry node
-    GeowrapperNode = docNode.createElement('spatial:geometry');
-    GeowrapperNode.setAttribute([s,'coordinateSystem'],'Cartesian');
-    %Create a globally unique ID
-    % dicomWrapper = num2str(dicomuid());
-    % dicomWrapper = strrep(dicomWrapper, '.', '');
-    % GeowrapperNode.setAttribute('id', ['co',dicomWrapper]);
-    % GeowrapperNode.setAttribute('geometryType', 'primitive');
-    %%%
-    
-    
-    %Define compartments
-    %list
-    if listedCompartments==0
-        ListOfCompartments = docNode.createElement('listOfCompartments');
-        compartmentlistCSG = [];
-        compartmentlistMesh = [];
-        if ~isempty(CSGdata)
-            compartmentlistCSG = unique(extractfield(CSGdata.list,'name'));
-        end
-        if ~isempty(Meshdata)
-            compartmentlistMesh = unique(extractfield(Meshdata.list,'name'));
-        end
-        compartmentlist = unique([compartmentlistCSG,compartmentlistMesh]);
-        %extract compartment information
-        for j = 1:length(compartmentlist)
-            %actual compartment
-            compartment = docNode.createElement('compartment');
+GeowrapperNode = docNode.createElement('spatial:geometry');
+GeowrapperNode.setAttribute([s,'coordinateSystem'],'Cartesian');
+%Create a globally unique ID
+% dicomWrapper = num2str(dicomuid());
+% dicomWrapper = strrep(dicomWrapper, '.', '');
+% GeowrapperNode.setAttribute('id', ['co',dicomWrapper]);
+% GeowrapperNode.setAttribute('geometryType', 'primitive');
+%%%
+
+
+%Define compartments
+%list
+if listedCompartments==0
+    ListOfCompartments = docNode.createElement('listOfCompartments');
+    compartmentlistCSG = [];
+    compartmentlistMesh = [];
+    if ~isempty(CSGdata)
+        compartmentlistCSG = unique(extractfield(CSGdata.list,'name'));
+    end
+    if ~isempty(Meshdata)
+        compartmentlistMesh = unique(extractfield(Meshdata.list,'name'));
+    end
+    compartmentlist = unique([compartmentlistCSG,compartmentlistMesh]);
+    %extract compartment information
+    for j = 1:length(compartmentlist)
+        %actual compartment
+        compartment = docNode.createElement('compartment');
 %             dicomWrapper = num2str(dicomuid());
 %             dicomWrapper = strrep(dicomWrapper, '.', '');
-            %         compartment.setAttribute('metaid',dicomWrapper);
-            compartment.setAttribute('id',compartmentlist{j});%CSGdata.class);
-            compartment.setAttribute('name',compartmentlist{j});%CSGdata.class);
-            compartment.setAttribute('spatialDimensions','3');
-            compartment.setAttribute('size','50000');
-            compartment.setAttribute('units','um3');%'m');
-            compartment.setAttribute('constant','true');
-            %compartment mapping
-            mapping = docNode.createElement([s,'compartmentMapping']);
-            mapping.setAttribute([s,'spatialId'],[compartmentlist{j},compartmentlist{j}]);%[DomainID,CSGdata.class]);
-            mapping.setAttribute([s,'compartment'],compartmentlist{j});%[CSGdata.class]);
-            mapping.setAttribute([s,'domainType'],compartmentlist{j});%DomainID);
-            mapping.setAttribute([s,'unitSize'],'1');
-            %add children node
-            compartment.appendChild(mapping);
-            %         ListOfCompartments.appendChild(compartment);
-            
-            %add annotation
-            annotation = addAnnotation(docNode);
-            compartment.appendChild(annotation);
-            ListOfCompartments.appendChild(compartment);
-        end
-        wrapperNode.appendChild(ListOfCompartments);
+        %         compartment.setAttribute('metaid',dicomWrapper);
+        compartment.setAttribute('id',compartmentlist{j});%CSGdata.class);
+        compartment.setAttribute('name',compartmentlist{j});%CSGdata.class);
+        compartment.setAttribute('spatialDimensions','3');
+        compartment.setAttribute('size','50000');
+        compartment.setAttribute('units','um3');%'m');
+        compartment.setAttribute('constant','true');
+        %compartment mapping
+        mapping = docNode.createElement([s,'compartmentMapping']);
+        mapping.setAttribute([s,'spatialId'],[compartmentlist{j},compartmentlist{j}]);%[DomainID,CSGdata.class]);
+        mapping.setAttribute([s,'compartment'],compartmentlist{j});%[CSGdata.class]);
+        mapping.setAttribute([s,'domainType'],compartmentlist{j});%DomainID);
+        mapping.setAttribute([s,'unitSize'],'1');
+        %add children node
+        compartment.appendChild(mapping);
+        %         ListOfCompartments.appendChild(compartment);
+        
+        %add annotation
+        annotation = addAnnotation(docNode);
+        compartment.appendChild(annotation);
+        ListOfCompartments.appendChild(compartment);
     end
-    
-    
-    
+    wrapperNode.appendChild(ListOfCompartments);
+end
+
+
+
 % if ~isempty(CSGdata)
     %Define the domain
 %     DomainID = CSGdata.class;%'subdomain0';
@@ -301,46 +301,46 @@ wrapperNode.appendChild(ListOfUnitDefinitions);
     %add compartments to model
     % docRootNode.appendChild(ListOfCompartments);
 %     wrapperNode.appendChild(ListOfCompartments);
-    
-    %add Species field to the files - this doesn't currently add real
-    %values, it is only there for demonstration. CellOrganizer doesn't
-    %currently support the specification of species
-    addspecs = 0;
-    if addspecs==1
-        listOfSpecies = addSpecies(docNode);
-        wrapperNode.appendChild(listOfSpecies);
-    end
-    
-    %set up parameters
-    ListOfParameters = docNode.createElement('listOfParameters');
-    %actual parameters
-    dimensionNames = ['x','y','z'];
-    
-    for i = 1:length(dimensionNames)
-        parameter = docNode.createElement('parameter');
-        parameter.setAttribute('id',dimensionNames(i));
-        parameter.setAttribute('value','0');
-        parameter.setAttribute('req:mathOverridden','spatial');
-        parameter.setAttribute('req:coreHaseAlternateMath','false');
-        %create spatial:spatialSymbolReference node
-        symbolref = docNode.createElement([s,'spatialSymbolReference']);
-        symbolref.setAttribute([s,'spatialId'],dimensionNames(i));
-        symbolref.setAttribute([s,'type'],'coordinateComponent');
-        %add spatial:spatialSymbolReference node to x parameter node
-        parameter.appendChild(symbolref);
-        %add parameter to list
-        ListOfParameters.appendChild(parameter);
-    end
-    % docRootNode.appendChild(ListOfParameters);
-    wrapperNode.appendChild(ListOfParameters);
-    
-    %Add listOfInitialAssignments
-    initAssign = 0;
-    if initAssign == 1
-       listOfInitialAssignments = addInitAssign(docNode);
-       wrapperNode.appendChild(listOfInitialAssignments);
-    end
-    
+
+%add Species field to the files - this doesn't currently add real
+%values, it is only there for demonstration. CellOrganizer doesn't
+%currently support the specification of species
+addspecs = 0;
+if addspecs==1
+    listOfSpecies = addSpecies(docNode);
+    wrapperNode.appendChild(listOfSpecies);
+end
+
+%set up parameters
+ListOfParameters = docNode.createElement('listOfParameters');
+%actual parameters
+dimensionNames = ['x','y','z'];
+
+for i = 1:length(dimensionNames)
+    parameter = docNode.createElement('parameter');
+    parameter.setAttribute('id',dimensionNames(i));
+    parameter.setAttribute('value','0');
+    parameter.setAttribute('req:mathOverridden','spatial');
+    parameter.setAttribute('req:coreHaseAlternateMath','false');
+    %create spatial:spatialSymbolReference node
+    symbolref = docNode.createElement([s,'spatialSymbolReference']);
+    symbolref.setAttribute([s,'spatialId'],dimensionNames(i));
+    symbolref.setAttribute([s,'type'],'coordinateComponent');
+    %add spatial:spatialSymbolReference node to x parameter node
+    parameter.appendChild(symbolref);
+    %add parameter to list
+    ListOfParameters.appendChild(parameter);
+end
+% docRootNode.appendChild(ListOfParameters);
+wrapperNode.appendChild(ListOfParameters);
+
+%Add listOfInitialAssignments
+initAssign = 0;
+if initAssign == 1
+    listOfInitialAssignments = addInitAssign(docNode);
+    wrapperNode.appendChild(listOfInitialAssignments);
+end
+
 %     %%%Set up the Geometry node
 %     GeowrapperNode = docNode.createElement('spatial:geometry');
 %     GeowrapperNode.setAttribute([s,'coordinateSystem'],'Cartesian');
@@ -350,33 +350,33 @@ wrapperNode.appendChild(ListOfUnitDefinitions);
 %     % GeowrapperNode.setAttribute('id', ['co',dicomWrapper]);
 %     % GeowrapperNode.setAttribute('geometryType', 'primitive');
 %     %%%
+
+%%%Set up the ListOfCoordinateComponent node
+ListOfCoordCompNode = docNode.createElement([s,'listOfCoordinateComponents']);
+%for each dimension
+for i = 1:length(dimensionNames)
+    CoordCompNode = docNode.createElement([s,'coordinateComponent']);
+    CoordCompNode.setAttribute([s,'spatialId'],dimensionNames(i));
+    CoordCompNode.setAttribute([s,'type'],['cartesian',upper(dimensionNames(i))]);
+    CoordCompNode.setAttribute([s,'sbmlUnit'],'m');
+    CoordCompNode.setAttribute([s,'index'],num2str(i-1));
     
-    %%%Set up the ListOfCoordinateComponent node
-    ListOfCoordCompNode = docNode.createElement([s,'listOfCoordinateComponents']);
-    %for each dimension
-    for i = 1:length(dimensionNames)
-        CoordCompNode = docNode.createElement([s,'coordinateComponent']);
-        CoordCompNode.setAttribute([s,'spatialId'],dimensionNames(i));
-        CoordCompNode.setAttribute([s,'componentType'],['cartesian',upper(dimensionNames(i))]);
-        CoordCompNode.setAttribute([s,'sbmlUnit'],'m');
-        CoordCompNode.setAttribute([s,'index'],num2str(i-1));
-        
-        %define dimensions
-        minNode = docNode.createElement([s,'boundaryMin']);
-        minNode.setAttribute([s,'spatialId'],[upper(dimensionNames(i)),'min']);
-        minNode.setAttribute([s,'value'],'-10');
-        CoordCompNode.appendChild(minNode);
-        maxNode = docNode.createElement([s,'boundaryMax']);
-        maxNode.setAttribute([s,'spatialId'],[upper(dimensionNames(i)),'max']);
-        maxNode.setAttribute([s,'value'],'10');
-        CoordCompNode.appendChild(maxNode);
-        
-        %add component to the list
-        ListOfCoordCompNode.appendChild(CoordCompNode);
-    end
-    GeowrapperNode.appendChild(ListOfCoordCompNode);
-    %%%
-    if ~isempty(CSGdata)
+    %define dimensions
+    minNode = docNode.createElement([s,'boundaryMin']);
+    minNode.setAttribute([s,'spatialId'],[upper(dimensionNames(i)),'min']);
+    minNode.setAttribute([s,'value'],'-10');
+    CoordCompNode.appendChild(minNode);
+    maxNode = docNode.createElement([s,'boundaryMax']);
+    maxNode.setAttribute([s,'spatialId'],[upper(dimensionNames(i)),'max']);
+    maxNode.setAttribute([s,'value'],'10');
+    CoordCompNode.appendChild(maxNode);
+    
+    %add component to the list
+    ListOfCoordCompNode.appendChild(CoordCompNode);
+end
+GeowrapperNode.appendChild(ListOfCoordCompNode);
+%%%
+if ~isempty(CSGdata)
     %%%Set up the ListOfDomainTypes node
     ListOfDomainTypesNode = docNode.createElement([s,'listOfDomainTypes']);
     %get list of domain types from CSG data list
@@ -521,9 +521,16 @@ wrapperNode.appendChild(ListOfUnitDefinitions);
             %         CSGRotationNode.setAttribute([s,'rotateAxisX'], num2str(rotation(1)));
             %         CSGRotationNode.setAttribute([s,'rotateAxisY'], num2str(rotation(2)));
             %         CSGRotationNode.setAttribute([s,'rotateAxisZ'], num2str(rotation(3)));
+            % rotateAxis* is currently invalid SBML
+            % (http://sbml.org/Facilities/Validator/, "Level 3 Version 2 Core
+            % (Release 1), as well as all Level 3 packages for which
+            % specifications exist") but VCell still needs it:
             CSGRotationNode.setAttribute([s,'rotateAxisX'], num2str(deg2rad(rotation(1))));
             CSGRotationNode.setAttribute([s,'rotateAxisY'], num2str(deg2rad(rotation(2))));
             CSGRotationNode.setAttribute([s,'rotateAxisZ'], num2str(deg2rad(rotation(3))));
+            CSGRotationNode.setAttribute([s,'rotateX'], num2str(deg2rad(rotation(1))));
+            CSGRotationNode.setAttribute([s,'rotateY'], num2str(deg2rad(rotation(2))));
+            CSGRotationNode.setAttribute([s,'rotateZ'], num2str(deg2rad(rotation(3))));
         else
             error('No rotation specified. Unable to create SBML Spatial file.');
         end

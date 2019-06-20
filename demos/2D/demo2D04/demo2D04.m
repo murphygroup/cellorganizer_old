@@ -54,7 +54,7 @@ disp( 'demo2D04' );
 disp( 'The estimated running time is 3 minutes. Please wait.' );
 
 options.verbose = true;
-options.debug = false;
+options.debug = true;
 options.display = false;
 options.model.name = 'demo2D04';
 options = ml_initparam( options, struct( ...
@@ -73,12 +73,13 @@ options.model.diffeomorphic.distance_computing_method = 'faster';
 % the following list of parameters are adapted to the LAMP2 image
 % collection, modify these according to your needs
 
-dna = {}; cellm = {}; protein = {}; options.masks = {};
+dna = {}; cellm = {}; protein = {}; options.masks = {}; options.labels = {};
 directory = '../../../images/HeLa/2D/LAM/';
 for i=1:1:10
 	dna{length(dna)+1} = [ directory filesep 'orgdna' filesep 'cell' num2str(i) '.tif' ];
 	cellm{length(cellm)+1} = [ directory filesep 'orgcell' filesep 'cell' num2str(i) '.tif' ];
 	protein{length(protein)+1} = [ directory filesep 'orgprot' filesep 'cell' num2str(i) '.tif' ];
+    options.labels{length(options.labels)+1} = 'LAMP2';
 	options.masks{length(options.masks)+1} = [ directory filesep 'crop' filesep 'cell' num2str(i) '.tif' ];
 end
 

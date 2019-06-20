@@ -176,14 +176,18 @@ if param.includenuclear || param.includecell
         
         if is3D
             instance = tp_genspsurf(model.nuclearShapeModel, tparam);
-            [nucimg, nucsurf, ~] = tp_gennucshape(instance, tparam);
+            tp_gennucshape_result = tp_gennucshape(instance, tparam);
+            nucimg = tp_gennucshape_result.nucimg;
+            nucsurf = tp_gennucshape_result.nucsurf;
 
             nucleus.nucimgsize = size(nucimg);
             nucleus.nucsurf = nucsurf; clear nucsurf;
             nucleus.nucimg = nucimg; clear nucimg;
             % generate cell shape instance from it
-            [cellimg, nucimg] = ml_gencellshape3d( ...
-                        model.cellShapeModel, nucleus, tparam );
+            ml_gencellshape3d_result = ml_gencellshape3d( ...
+                model.cellShapeModel, nucleus, tparam );
+            cellimg = ml_gencellshape3d_result.cellimg;
+            nucimg = ml_gencellshape3d_result.nucimg;
 
             if param.includenuclear
                 stats=rm_get3Dstats(nucimg);

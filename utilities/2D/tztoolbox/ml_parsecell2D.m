@@ -149,8 +149,10 @@ for i=1:length(f)
             case 'nucimg'
                 s2.nucimg=ml_obj2img2D(s2.nucbody,s2.imgsize,{'2d','bn'});
             case 'celledge'
+                disp('Computing cell edge');
                 s2=updates2(s2,{'cellimg'}, param );
                 s2.celledge=bwperim(s2.cellimg,8);
+                s2.celledge=imdilate(s2.celledge, strel('disk',1));
             case 'cellcenter'
                 s2.cellcenter=round(mean(s2.cellbody,1));
                 %t+{27-Jan-2006}
@@ -162,12 +164,16 @@ for i=1:length(f)
                 s2.nuccenter = s2.nuccenter(1:2);
                 %t++
             case 'nucedge'
+                disp('Computing nuclear edge');
                 s2=updates2(s2,{'nucimg'}, param );
+                s2.nucedge=imdilate(s2.nucimg, strel('disk',1));
                 s2.nucedge=bwperim(s2.nucimg,8);
             case 'cellcontour'
+                disp('Computing cell contour');
                 s2=updates2(s2,{'celledge'}, param );
                 s2.cellcontour=ml_tracecontour(ml_mainobjcontour(s2.celledge));
             case 'nuccontour'
+                disp('Computing nuclear contour');
                 s2=updates2(s2,{'nucedge'}, param );
                 s2.nuccontour=ml_tracecontour(ml_mainobjcontour(s2.nucedge));
             case 'cellmangle'
@@ -211,7 +217,6 @@ for i=1:length(f)
                                 mark = pts( intc2(end), : );
                                 plot( mark(1,1), mark(1,2), 'ro' )
                                 if a == 0
-                                    legend('Cell center', 'Hit');
                                     title( param.cell_image_path );
                                     ylim = get(gca,'YLim');
                                     xlim = get(gca,'XLim');
@@ -304,7 +309,6 @@ for i=1:length(f)
                                 mark = pts( intc1(end), : );
                                 plot( mark(1,1), mark(1,2), 'ro' )
                                 if a == 0
-                                    legend('Nuclear center', 'Hit');
                                     title( param.dna_image_path );
                                     ylim = get(gca,'YLim');
                                     xlim = get(gca,'XLim');

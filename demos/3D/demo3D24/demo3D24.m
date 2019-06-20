@@ -16,8 +16,8 @@ function answer = demo3D24( options )
 
 % Devin Sullivan
 %
-% Copyright (C) 2014-2017 Murphy Lab
-% Computational Biology Department
+% Copyright (C) 2014-2019 Murphy Lab
+% Lane Center for Computational Biology
 % School of Computer Science
 % Carnegie Mellon University
 %
@@ -38,6 +38,9 @@ function answer = demo3D24( options )
 %
 % For additional information visit http://murphylab.web.cmu.edu or
 % send email to murphy@cmu.edu
+
+use_profiling = false;
+% use_profiling = true;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DO NOT MODIFY THIS BLOCK
@@ -75,13 +78,13 @@ options.overlapsubsize = 1;
 filename = 'Motivating_example_cBNGL2_13_sbml.xml';
 url = 'http://www.cellorganizer.org/Downloads/files';
 
-urlwrite([url filesep filename], filename);
+% options.output.SBML = 'Motivating_example_cBNGL2_13_sbml.xml';
 
-if ~exist( filename )
-    warning('Unable to download file. Exiting demo.' );
-    return
-end
-options.output.SBML = 'Motivating_example_cBNGL2_13_sbml.xml';
+options.output.SBMLSpatial = 'Marcon et al. 2016 - Figure 2c Type III.xml';
+options.output.SBMLSpatialVCellCompatible = true;
+options.output.SBMLSpatialUseCompression = true;
+options.output.SBMLSpatialImage = true;
+options.output.SBMLDownsampling = [1/16, 1/16, 1];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -93,5 +96,24 @@ options.output.SBML = 'Motivating_example_cBNGL2_13_sbml.xml';
 modelpaths = {'../../../models/3D/tfr.mat'};
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+if use_profiling
+    profile off; profile('-memory','on'); profile off; profile on;
+end
+
+options
+options_output = options.output
+
 answer = slml2img(modelpaths,options);
+
+xml_source_filename = [options.prefix, '/cell1/cell.xml'];
+xml_destination_filename = [options.prefix, '.xml'];
+copyfile(xml_source_filename, xml_destination_filename);
+
+if use_profiling
+    profile_results = profile('info');
+    profile_filename = ['profile_results', '.mat'];
+    profsave(profile_results, [profile_filename, '_html']);
+    save(profile_filename, 'profile_results');
+end
+
 end%demo3D24

@@ -18,7 +18,7 @@ function answer = demo2D01( options )
 
 % Ivan E. Cao-Berg (icaoberg@cmu.edu)
 %
-% Copyright (C) 2013-2018 Murphy Lab
+% Copyright (C) 2013-2019 Murphy Lab
 % Computational Biology Department
 % School of Computer Science
 % Carnegie Mellon University
@@ -55,7 +55,9 @@ disp( 'The estimated running time is 7 minutes. Please wait.' );
 
 options.verbose = true;
 options.debug = true;
+options.save_segmentations = true;
 options.display = false;
+options.skip_preprocessing = true;
 options.model.name = 'demo2D01';
 options = ml_initparam( options, struct( ...
     'train', struct( 'flag', 'all' )));
@@ -64,17 +66,27 @@ options.nucleus.type = 'medial_axis';
 options.cell.class = 'cell_membrane';
 options.cell.type = 'ratio';
 options.protein.class = 'vesicle';
+options.save_segmentations = true;
 options.protein.type = 'gmm';
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% the following list of parameters are adapted to the LAMP2 image
-% collection, modify these according to your needs
-directory = '../../../images/HeLa/2D/LAM/';
-dna = {}; cellm = {}; protein = {}; options.masks = {};
-for i=1:1:10
+dna = {}; cellm = {}; protein = {}; options.masks = {}; options.labels = {};
+
+directory = '../../../images/HeLa/2D/LAM';
+for i=1:1:25
     dna{length(dna)+1} = [ directory filesep 'orgdna' filesep 'cell' num2str(i) '.tif' ];
     cellm{length(cellm)+1} = [ directory filesep 'orgcell' filesep 'cell' num2str(i) '.tif' ];
     protein{length(protein)+1} = [ directory filesep 'orgprot' filesep 'cell' num2str(i) '.tif' ];
+    options.labels{length(options.labels)+1} = 'LAMP2';
+    options.masks{length(options.masks)+1} = [ directory filesep 'crop' filesep 'cell' num2str(i) '.tif' ];
+end
+
+directory = '../../../images/HeLa/2D/Nuc';
+for i=1:1:25
+    dna{length(dna)+1} = [ directory filesep 'orgdna' filesep 'cell' num2str(i) '.tif' ];
+    cellm{length(cellm)+1} = [ directory filesep 'orgcell' filesep 'cell' num2str(i) '.tif' ];
+    protein{length(protein)+1} = [ directory filesep 'orgprot' filesep 'cell' num2str(i) '.tif' ];
+    options.labels{length(options.labels)+1} = 'Nucleoli';
     options.masks{length(options.masks)+1} = [ directory filesep 'crop' filesep 'cell' num2str(i) '.tif' ];
 end
 

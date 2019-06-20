@@ -619,7 +619,7 @@ for interval = 1:length(interp_intervals)
                             
                             system(['rm ' modelparam.framefolder filesep 'temp' filesep '*.tmp'])
                             
-                            img = model2img({model}, modelparam);
+                            img = getfield(model2img({model}, modelparam), 'imgs');
                             
                             save(framefile, 'img', 'param')
                             

@@ -36,14 +36,12 @@ end
 %inital options struct
 options = ml_initparam(options, struct('model', []));
 
-
 if ~exist(savedir, 'dir')
     mkdir(savedir)
 end
 
 %set the default dimensionality to the dimensionality of the data
 if ~isfield(options.model, 'dimensionality')
-    
     if size(imdna,3) == 1
         options.model.dimensionality = '2D';
     else

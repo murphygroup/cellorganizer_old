@@ -1,4 +1,4 @@
-function [ result ] = instance2SBML_mod( CSGdata, meshData, savepath, SBMLfile,resolution )
+function [ result ] = instance2SBML_mod( CSGdata, meshData, savepath, SBMLfile,resolution, options )
 %INSTANCE2SBML Writes data struct to a SBML-Spatial file. If an existing file is provided
 %this method will append to the end of the file.
 %
@@ -64,7 +64,7 @@ if nargin<5
     resolution = [1,1,1];
 end
 
-if isempty(SBMLfile)
+if isempty(SBMLfile) || ~ischar(SBMLfile)
     SBMLfile = 1;
 end
 
@@ -80,15 +80,15 @@ if ~isempty(CSGdata) && ~isempty(meshData)
 end
 
 s = 'spatial:';
-[docNode,docRootNode,wrapperNode,GeowrapperNode] = setupSBML(SBMLfile,param);
+[docNode,docRootNode,wrapperNode,GeowrapperNode] = setupSBML(SBMLfile,meshData,param,options);
 
 %%%Define the Geometry
 
 if ~isempty(CSGdata) && ~isempty(meshData)
     %this is a "mixed" case
     geometryDefNodeParent = docNode.createElement([param.prefix,'listOfGeometryDefinitions']);
-    geometryDefNodeMixed = docNode.createElement([param.prefix, 'MixedGeometry']);
-    geometryDefNode = docNode.createElement([param.prefix, 'ListOfGeometryDefinitions']);
+    geometryDefNodeMixed = docNode.createElement([param.prefix, 'mixedGeometry']);
+    geometryDefNode = docNode.createElement([param.prefix, 'listOfGeometryDefinitions']);
 else
     geometryDefNode = docNode.createElement([param.prefix,'listOfGeometryDefinitions']);
 end
@@ -104,11 +104,18 @@ domainlist = {};
 objs = {};
 
 if ~isempty(CSGdata)
-    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = addCSGObjects(CSGdata,docNode,geometryDefNode,GeowrapperNode,wrapperNode);
+    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = addCSGObjects(CSGdata,docNode,geometryDefNode,GeowrapperNode,wrapperNode,options);
     %Add surface area and volume for the class of the same "name" aka domainType
     
     %grab the ordinals
     domainlist = fieldnames(CSGdata);
+    domainlist2 = {};
+    for i = 1:length(domainlist)
+        if ~strcmp(domainlist{i}, 'primitiveOnly')
+            domainlist2{end+1} = domainlist{i};
+        end
+    end
+    domainlist = domainlist2;
     for i = 1:length(domainlist)
         ordinals(i) = CSGdata.(domainlist{i}).ordinal;
         objs{i} = CSGdata.(domainlist{i}).list;
@@ -132,7 +139,7 @@ end
 %D. Sullivan 9/10/14  - added "primitiveOnly" for fast computations here
 if (~isfield(CSGdata,'primitiveOnly')||CSGdata.primitiveOnly==0) && ~isempty(meshData)
     meshData.resolution = resolution;
-    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = addMeshObjects(meshData,docNode,geometryDefNode,GeowrapperNode,wrapperNode);
+    [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = addMeshObjects(meshData,docNode,geometryDefNode,GeowrapperNode,wrapperNode, options);
     
     for i = 1:length(meshData.list)
         domainlist{end+1} = meshData.list(i).name;
@@ -171,6 +178,10 @@ for j=1:length(ordinal_list)-1
                     %             link_type = link_object(i).type;
                     AdjacentDomainNode = docNode.createElement([s,'adjacentDomains']);
                     AdjacentDomainNode.setAttribute([s,'id'],[start_name,'_',link_name]);%[DomainID,num2str(j-1)])%'0']);
+                    % Does not pass SBML validator
+                    if options.output.SBMLSpatialVCellCompatible
+                        AdjacentDomainNode.setAttribute('id',AdjacentDomainNode.getAttribute([s,'id']))
+                    end;
                     AdjacentDomainNode.setAttribute([s,'domain1'],start_name);
                     AdjacentDomainNode.setAttribute([s,'domain2'],link_name);
                     ListOfAdjacentDomains.appendChild(AdjacentDomainNode);
@@ -180,7 +191,9 @@ for j=1:length(ordinal_list)-1
     end
     
 end
-GeowrapperNode.appendChild(ListOfAdjacentDomains);
+if ListOfAdjacentDomains.getChildNodes().getLength() > 0
+    GeowrapperNode.appendChild(ListOfAdjacentDomains);
+end
 
 %%%
 
@@ -206,6 +219,7 @@ wrapperNode.appendChild(GeowrapperNode);
 % docRootNode.appendChild(GeowrapperNode);
 docRootNode.appendChild(wrapperNode);
 xmlwrite(savepath, docNode);
+zip([savepath, '.zip'], savepath);
 
 result = 1;
 end

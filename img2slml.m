@@ -25,8 +25,8 @@ function answer = img2slml( varargin )
 % ┌───────────────┐
 % │List Of Options│
 % └───────────────┘
-% Mandatory parameters      Descriptions
-% --------------------      ------------
+% Mandatory options         Descriptions
+% -----------------         ------------
 % model.resolutions         Any double 1x2/1x3 double vector.
 %                           (microns/voxel).
 %
@@ -41,6 +41,16 @@ function answer = img2slml( varargin )
 % model.id                  (optional) Holds the id of the model. Default is a randomly generated string.
 % model.filename            Holds the output filename.
 % downsampling              Downsampling vector to be used during preprocessing.
+%
+% Debugging options
+% -----------------
+% debug                     If set to true, then the function will (1) keep temporary results folder, (2) will
+%                           print information useful for debugging. Default is false.
+% display                   If set to true, then plots useful for debugging with be open. This functionality is
+%                           meant for debugging only, setting this to true will considerably slow down 
+%                           computation. Default is false;
+% save_segmentations        Will save the segmentations to the model file. Setting this option to true will create
+%                           a considerably large file.
 %
 % Nuclear shape model options  Descriptions
 % ---------------------------  ------------
@@ -163,7 +173,7 @@ diary( logfile )
 
 if isdeployed
     disp('Running deployed version of img2slml');
-
+    
     disp('Checking number of input arguments')
     if length(varargin) == 1
         text_file = varargin{1};
@@ -171,55 +181,55 @@ if isdeployed
         error('Deployed function takes only 1 argument. Exiting method.');
         return
     end
-
+    
     disp('Checking existence of input file')
     [filepath, name, ext] = fileparts(text_file);
-
+    
     if ~exist(text_file, 'file')
         warning('Input file does not exist. Exiting method.');
         return
     end
-
+    
     disp(['Attempting to read input file ' text_file]);
     fid = fopen(text_file, 'r' );
-
+    
     disp('Evaluating lines from input file');
     while ~feof(fid)
         line = fgets(fid);
         eval(line);
     end
-
+    
     disp('Closing input file')
     fclose(fid);
-
+    
     disp( 'Checking nuclear membrane images list' )
     if ~isempty( dnaImagesDirectoryPath )
-    	dnaImagesDirectoryPath = parse_ometiff_deployed(dnaImagesDirectoryPath);
-    else
-	disp( 'List is empty' )
-    end
-
-    disp( 'Checking cell membrane images list' )
-    if ~isempty( cellImagesDirectoryPath )
-	cellImagesDirectoryPath = parse_ometiff_deployed(cellImagesDirectoryPath);
-    else
-	disp( 'List is empty' )
-    end
-
-    disp( 'Checking protein pattern images list' )
-    if ~isempty( proteinImagesDirectoryPath )
-    	proteinImagesDirectoryPath = parse_ometiff_deployed(proteinImagesDirectoryPath);
-    else
-	disp( 'List is empty' )
-    end
-
-    disp( 'Checking mask pattern images list' )
-    if ~isempty( options.masks )
-    	options.masks = parse_ometiff_deployed(options.masks);
+        dnaImagesDirectoryPath = parse_ometiff_deployed(dnaImagesDirectoryPath);
     else
         disp( 'List is empty' )
     end
-
+    
+    disp( 'Checking cell membrane images list' )
+    if ~isempty( cellImagesDirectoryPath )
+        cellImagesDirectoryPath = parse_ometiff_deployed(cellImagesDirectoryPath);
+    else
+        disp( 'List is empty' )
+    end
+    
+    disp( 'Checking protein pattern images list' )
+    if ~isempty( proteinImagesDirectoryPath )
+        proteinImagesDirectoryPath = parse_ometiff_deployed(proteinImagesDirectoryPath);
+    else
+        disp( 'List is empty' )
+    end
+    
+    disp( 'Checking mask pattern images list' )
+    if ~isempty( options.masks )
+        options.masks = parse_ometiff_deployed(options.masks);
+    else
+        disp( 'List is empty' )
+    end
+    
     disp('Checking and getting default parameters')
     param = get_cellorganizer_default_parameters( 'training', options );
 else
@@ -230,22 +240,25 @@ else
     catch
         param = [];
     end
-
+    
     dimensionality = varargin{1};
     dnaImagesDirectoryPath = varargin{2};
     cellImagesDirectoryPath = varargin{3};
     proteinImagesDirectoryPath = varargin{4};
     param = varargin{5};
+    
+    disp('Checking and getting default parameters')
+    param = get_cellorganizer_default_parameters( 'training', param );
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% CHECK INPUT ARGUMENTS %%%%%%%%%%%%%%%%%%%%%%%%%%
 disp(' '); print_large_title('Validating input arguments' );
 if isdeployed || length(varargin) == 5
     [dnaImagesDirectoryPath, cellImagesDirectoryPath, ...
-        proteinImagesDirectoryPath] = check_images_directory_paths( ...
+        proteinImagesDirectoryPath,labels] = check_images_directory_paths( ...
         dnaImagesDirectoryPath, cellImagesDirectoryPath, ...
         proteinImagesDirectoryPath, param );
-
+    
     if ~ismember( param.train.flag, {'protein'} ) && ...
             isempty( dnaImagesDirectoryPath ) && ...
             isempty( cellImagesDirectoryPath ) && ...
@@ -253,7 +266,7 @@ if isdeployed || length(varargin) == 5
         answer = false;
         return
     end
-
+    
     if (isfield( param, 'protein' ) && ...
             isfield( param.protein, 'class' ) && ...
             strcmpi( param.protein.class, 'standardized_voxels' )) && ...
@@ -261,10 +274,10 @@ if isdeployed || length(varargin) == 5
             isfield( param.protein, 'type' ) && ...
             strcmpi( param.protein.type, 'standardized_map_half-ellipsoid' ))
         disp(' '); print_large_title('Cleaning up data' );
-		if isfield(param.model, 'tcell') && isfield(param.model.tcell, 'ometiff') && ...
-			(param.model.tcell.ometiff == true)
-        		get_tif_annotation_from_ometiff( proteinImagesDirectoryPath );
-		end
+        if isfield(param.model, 'tcell') && isfield(param.model.tcell, 'ometiff') && ...
+                (param.model.tcell.ometiff == true)
+            get_tif_annotation_from_ometiff( proteinImagesDirectoryPath );
+        end
     end
     param = clean_up_training_input_arguments( dimensionality, param );
     if isempty( param )
@@ -299,26 +312,26 @@ disp(' '); print_large_title('Parse and clean generative model' );
 if strcmpi( dimensionality, '2D' )
     disp(upper('Adding parameters to model structure'));
     model = parse_and_clean_generative_model( model, param );
-
+    
     disp(upper('Adding documentation to model structure'));
     model = add_documentation_to_model( model, param );
-
+    
     disp(upper('Clean up and wrap up model structure'));
     model = clean_up_and_wrap_up_model( model, param );
-
+    
     disp(' '); disp(upper('Clean up workspace and environment'));
     answer = clean_up( param );
 else
     disp(upper('Adding parameters to model structure'));
     model = parse_and_clean_generative_model( model, param );
-
+    
     disp(upper('Adding documentation to model structure'));
     model = add_documentation_to_model( model, param );
-
+    
     disp(upper('Adding parameters to model structure'));
     model = parse_and_clean_generative_model( model, param );
-
-    disp(' '); disp(upper('Clean up workspace and environment'));
+    
+    disp(' '); print_simple_title('Clean up workspace and environment');
     model = clean_up_and_wrap_up_model( model, param );
     answer = clean_up( param );
 end%3D
@@ -354,7 +367,7 @@ end
 end%clean_up
 
 function [dnaImagesDirectoryPath, cellImagesDirectoryPath, ...
-    proteinImagesDirectoryPath] = check_images_directory_paths( ...
+    proteinImagesDirectoryPath, labels] = check_images_directory_paths( ...
     dnaImagesDirectoryPath, cellImagesDirectoryPath, ...
     proteinImagesDirectoryPath, param )
 
@@ -375,13 +388,13 @@ elseif ismember( param.train.flag, {'cell'} )
             strcmpi( param.cell.type, 'pca' )
         proteinImagesDirectoryPath = {};
     end
-
+    
     if strcmpi( param.cell.class, 'cell_membrane' ) && ...
             strcmpi( param.cell.type, 'spharm_rpdm' )
         proteinImagesDirectoryPath = {};
         dnaImagesDirectoryPath = cellImagesDirectoryPath;
     end
-
+    
     if strcmpi( param.cell.class, 'cell_membrane' ) && ...
             strcmpi( param.cell.type, 'ratio' )
         warning('Unable to train a cell membrane ratio model without a nuclear membrane');
@@ -390,7 +403,7 @@ elseif ismember( param.train.flag, {'cell'} )
         proteinImagesDirectoryPath = {};
     end
 elseif ismember( param.train.flag, {'framework'} )
- proteinImagesDirectoryPath = {};
+    proteinImagesDirectoryPath = {};
 elseif ismember( param.train.flag, {'protein'} )
     if isempty( proteinImagesDirectoryPath )
         warning('Unable to train a protein shape model without images');
@@ -404,7 +417,33 @@ else %param.train.flag == 'all'
         dnaImagesDirectoryPath = {};
         cellImagesDirectoryPath = {};
         proteinImagesDirectoryPath = {};
+        labels = {};
     end
+end
+
+disp('Checking if using multiple datasets');
+check_images_directory = @(x)( (isempty(x)) || (~isempty(x) && all(cellfun(@iscell,x))) );
+if iscell( dnaImagesDirectoryPath ) && ...
+        ( check_images_directory(dnaImagesDirectoryPath) && ...
+        check_images_directory(cellImagesDirectoryPath) && ...
+        check_images_directory(proteinImagesDirectoryPath) )
+    disp('Multiple datasets found');
+    disp('Checking consistency accross datasets')
+    if numel(unique(nonzeros([length(dnaImagesDirectoryPath), ...
+            length(cellImagesDirectoryPath), ...
+            length(proteinImagesDirectoryPath)]))) == 1
+        disp('All nonempty datasets have the same length')
+    end
+    
+    labels = {};
+elseif ~isempty(dnaImagesDirectoryPath)
+    disp('Only one dataset found');
+    labels = {};
+else
+    dnaImagesDirectoryPath = {};
+    cellImagesDirectoryPath = {};
+    proteinImagesDirectoryPath = {};
+    labels = {};
 end
 end%check_images_directory_paths
 
@@ -417,7 +456,7 @@ disp('Parsing cell array')
 for i = 1:(length(arr))
     split      = strsplit(arr{i},':');
     file_array = [file_array ml_ls(split{1})];
-
+    
     %Check if given array has delimiter
     if length(strsplit(arr{1},':')) > 1
         ch_num     = [ch_num split{2}];
@@ -442,5 +481,4 @@ for i = 1:length(file_array)
         imgDir{length(imgDir)+1} = temp{j};
     end
 end
-
 end%parse_ometiff_deployed(arr)

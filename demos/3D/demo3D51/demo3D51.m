@@ -52,5 +52,5 @@ disp( 'The estimated running time is 1 minutes. Please wait...' );
 
 model_dir = '../demo3D50';
 if exist( [model_dir filesep 'lamp2.mat'] )
-    slml2info( [model_dir filesep 'lamp2.mat'] );
+    slml2info( {[model_dir filesep 'lamp2.mat']} );
 end

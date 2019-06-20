@@ -45,6 +45,21 @@ rand_point = train_point_1 * lambda + train_point_2 * (1 - lambda);
 
 reconst_landmarks = rand_point * train_coeff' + mu;
 reconst_landmarks = reshape(reconst_landmarks', [], 2); 
+centers = pca_model.centers;
+scales = pca_model.scales;
+center_1 = centers(:, :, rand_inds(1));        
+center_2 = centers(:, :, rand_inds(2)); 
+cur_center = center_1 * lambda +center_2 * (1 - lambda);
+
+switch pca_model.options.pca_options.shape_type
+    case {'shape', 'preshape'}
+        scale_1 = scales(rand_inds(1));
+        scale_2 = scales(rand_inds(2));
+        cur_scale = scale_1 * lambda +scale_2 * (1 - lambda);
+        reconst_landmarks = reconst_landmarks .* cur_scale + cur_center;
+    case {'shape_size'}
+        reconst_landmarks = reconst_landmarks + cur_center;        
+end
 
 cell_reconst_landmarks = [];
 nuc_reconst_landmarks = [];

@@ -47,11 +47,14 @@ if ~isdeployed()
   get_murphylab_image_collections( true );
   cd(current_path);
 end
+
 disp( 'demo2D05' );
 disp( 'The estimated running time is 1 minutes. Please wait...' );
 options.verbose = true;
 options.debug = false;
 options.display = false;
+options.save_segmentations = true;
+
 options.model.name = 'demo2D05';
 options = ml_initparam( options, struct( ...
     'train', struct( 'flag', 'framework' )));
@@ -66,20 +69,33 @@ options.cell.type = 'pca';
 options.model.pca.latent_dim = 15;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% the following list of parameters are adapted to the LAMP2 image
-% collection, modify these according to your needs
-directory = '../../../images/HeLa/2D/LAM/';
-dna = [ directory filesep 'orgdna' filesep 'cell*.tif' ];
-cellm = [ directory filesep 'orgcell' filesep 'cell*.tif' ];
-options.masks = [ directory filesep 'crop' filesep 'cell*.tif' ];
+dna = {}; cellm = {}; protein = {}; options.masks = {}; options.labels = {};
+
+directory = '../../../images/HeLa/2D/LAM';
+for i=1:1:25
+    dna{length(dna)+1} = [ directory filesep 'orgdna' filesep 'cell' num2str(i) '.tif' ];
+    cellm{length(cellm)+1} = [ directory filesep 'orgcell' filesep 'cell' num2str(i) '.tif' ];
+    protein{length(protein)+1} = [ directory filesep 'orgprot' filesep 'cell' num2str(i) '.tif' ];
+    options.labels{length(options.labels)+1} = 'LAMP2';
+    options.masks{length(options.masks)+1} = [ directory filesep 'crop' filesep 'cell' num2str(i) '.tif' ];
+end
+
+directory = '../../../images/HeLa/2D/Nuc';
+for i=1:1:25
+    dna{length(dna)+1} = [ directory filesep 'orgdna' filesep 'cell' num2str(i) '.tif' ];
+    cellm{length(cellm)+1} = [ directory filesep 'orgcell' filesep 'cell' num2str(i) '.tif' ];
+    protein{length(protein)+1} = [ directory filesep 'orgprot' filesep 'cell' num2str(i) '.tif' ];
+    options.labels{length(options.labels)+1} = 'Nucleoli';
+    options.masks{length(options.masks)+1} = [ directory filesep 'crop' filesep 'cell' num2str(i) '.tif' ];
+end
 
 options.model.resolution = [ 0.049, 0.049 ];
-options.model.filename = 'lamp2.xml';
-options.model.id = 'lamp2';
-options.model.name = 'lamp2';
+options.model.filename = 'model.xml';
+options.model.id = uuidgen();
+options.model.name = '2D HeLa LAMP2+Nuc';
 %set nuclei and cell model name
-options.nucleus.name = 'LAMP2';
-options.cell.model = 'LAMP2';
+options.nucleus.name = 'LAMP2+Nuc';
+options.cell.model = 'LAMP2+Nuc';
 %set the dimensionality of the model
 dimensionality = '2D';
 %documentation

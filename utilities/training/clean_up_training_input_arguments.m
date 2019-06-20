@@ -1,6 +1,5 @@
 %%%%%%%%%%%%%%%%% HELPER METHOD - CLEAN UP INPUT ARGUMENTS %%%%%%%%%%%%%%%%
 function param = clean_up_training_input_arguments( dimensionality, param )
-param = get_cellorganizer_default_parameters( 'training', param );
 
 disp(' '); print_simple_title('Checking model dimensionality' );
 if ~(strcmpi( dimensionality, '2d' ) || ...

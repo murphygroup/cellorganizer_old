@@ -26,7 +26,8 @@ function [nucimg, cellimg] = pca_reconstruct_training_images( model, options )
 % For additional information visit http://murphylab.web.cmu.edu or
 % send email to murphy@cmu.edu
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%
+% 1/13/2019 add center in the reconstruction
 
 pca_model = model.cellShapeModel;
 
@@ -44,6 +45,18 @@ mu = pca_model.mu;
 % reconstruction
 reconst_landmarks = cur_train_score * train_coeff' + mu;
 reconst_landmarks = reshape(reconst_landmarks', [], 2); 
+centers = pca_model.centers;
+scales = pca_model.scales;
+switch pca_model.options.pca_options.shape_type
+    case {'shape', 'preshape'}
+        cur_center = centers(:, :, cur_ind);        
+        cur_scale = scales(cur_ind);
+        reconst_landmarks = reconst_landmarks .* cur_scale + cur_center;
+    case {'shape_size'}
+        cur_center = centers(:, :, cur_ind);                
+        reconst_landmarks = reconst_landmarks + cur_center;        
+end
+
 
 cell_reconst_landmarks = [];
 nuc_reconst_landmarks = [];

@@ -66,3 +66,6 @@ nv = size(v, 1);
 v0 = repmat(v(1,:), nv, 1);
 products = sum(cross(v-v0, v([2:end 1], :)-v0, 2), 1);
 a = abs(dot(products, normal, 2))/2;
+if isnan(a)
+    a = 0;
+end

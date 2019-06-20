@@ -29,11 +29,21 @@ function [docNode,GeowrapperNode,geometryDefNode,wrapperNode] = ...
 % November 29, 2016 @icaoberg Updated method to save number of items in 
 %        spatialPoints and parametricGeometry instances
 
-%%Define all the Mesh objects
+
 s = 'spatial:';
+
+% Get listOfDomainTypes and listOfDomains:
+ListOfDomainTypesNode = GeowrapperNode.getElementsByTagName([s,'listOfDomainTypes']).item(0);
+ListOfDomainsNode = GeowrapperNode.getElementsByTagName([s,'listOfDomains']).item(0);
+
+%%Define all the Mesh objects
 % Parametric Geometry
 ParaGeometryNode = docNode.createElement([s,'parametricGeometry']);
 ParaGeometryNode.setAttribute([s,'id'],['id' sprintf('%03d',num2str(randi([0 10000000]),1))]);
+% Does not pass SBML validator
+if options.output.SBMLSpatialVCellCompatible
+    ParaGeometryNode.setAttribute('id',ParaGeometryNode.getAttribute([s,'id']))
+end;
 ParaGeometryNode.setAttribute([s,'isActive'],'true');
 
 % geometryDefNode.appendChild(ParaGeometryNode);
@@ -41,26 +51,57 @@ ParaGeometryNode.setAttribute([s,'isActive'],'true');
 %List of Parametric Objects
 ListOfParaObjectsNode = docNode.createElement([s,'listOfParametricObjects']);
 %ListOfParaObjectsNode.setAttribute([s,'id'], meshData.name);
+%ListOfParaObjectsNode.setAttribute('id',ListOfParaObjectsNode.getAttribute([s,'id']));
 %ListOfParaObjectsNode.setAttribute([s,'polygonType'], 'triangle');
 %ListOfParaObjectsNode.setAttribute('domain', DomainID);
 
 zslices = zeros(size(meshData.list(1).img,3),1);
+all_vertices = zeros(0, 3);
 
 for i = 1:length(meshData.list)
     object = meshData.list(i);
     name = object.name;
     type = object.type;
+    object_mesh = object.mesh;
+    object_resolution = object.resolution;
+    
+    % Add to listOfDomainTypes:
+    ListOfDomainTypesNode = GeowrapperNode.getElementsByTagName([s,'listOfDomainTypes']).item(0);
+    DomainTypeNode = docNode.createElement([s,'domainType']);
+    DomainTypeNode.setAttribute([s,'id'],name);
+    % Does not pass SBML validator
+    if options.output.SBMLSpatialVCellCompatible
+        DomainTypeNode.setAttribute('id',DomainTypeNode.getAttribute([s,'id']))
+    end;
+    DomainTypeNode.setAttribute([s,'spatialDimensions'],'3');
+    ListOfDomainTypesNode.appendChild(DomainTypeNode);
+
+    % Add to listOfDomains:
+    DomainNode = docNode.createElement([s,'domain']);
+    DomainNode.setAttribute([s,'id'],[name,num2str(1)]);%[name,num2str(i-1)]%[DomainID,num2str(j-1)])%'0']);
+    % Does not pass SBML validator
+    if options.output.SBMLSpatialVCellCompatible
+        DomainNode.setAttribute('id',DomainNode.getAttribute([s,'id']))
+    end;
+    DomainNode.setAttribute([s,'domainType'],name);
+    ListOfInteriorPoints = docNode.createElement([s,'listOfInteriorPoints']);
+    InteriorPoint = docNode.createElement([s,'interiorPoint']);
+    ListOfDomainsNode.appendChild(DomainNode);
     
     %assume the cell comes first
     zslicesold = zslices;
     zslices = squeeze(sum(sum(object.img,1),2));
     
     ParaObjectNode = docNode.createElement([s,'parametricObject']);
-    ParaObjectNode.setAttribute([s,'id'],[name]);%['Sp_', name]);
+    ParaObjectNode.setAttribute([s,'id'],[name,num2str(1),'_mesh']);%[name]);%['Sp_', name]);
+    % Does not pass SBML validator
+    if options.output.SBMLSpatialVCellCompatible
+        ParaObjectNode.setAttribute('id',ParaObjectNode.getAttribute([s,'id']))
+    end;
     %for now we will assume we are only dealing with triangulated meshes
     ParaObjectNode.setAttribute([s,'polygonType'],'triangle');
     %D.Sullivan 4/15/14 - fixed naming bug.
-    ParaObjectNode.setAttribute([s,'domainType'],name);
+    ParaObjectNode.setAttribute([s,'domainType'],[name]);
     ParaObjectNode.setAttribute([s,'compression'],'uncompressed');
     
     %Get mesh points
@@ -78,46 +119,46 @@ for i = 1:length(meshData.list)
         object.img(:,:,topslice) = object.img(:,:,topslice).*0;
         
     end
-    %D. Sullivan 11/30/14
-    %This is being replaced in favor of the iso2mesh software
-    %NOTE: This adds a dependency that we may not want - we should discuss
-    %FV = getMeshPoints(object.img);
-    try 
-        FV = makeIso2mesh(object.img);
-    catch
-        warning(['The iso2mesh package was not found.',...
-            'We recommend using this package for compact high-quality meshes.',...
-            'Proceeding with standard CellOrganizer method for meshing']);
-        FV = getMeshPoints(object.img);
+    
+    image_to_contour = object.img;
+    if options.output.SBMLFlipXToAlign
+        % Flip in X to align with image output
+        image_to_contour = flipdim(image_to_contour, 2);
     end
-    if size(FV.faces,2)>3
-        FV.faces = FV.faces(:,1:3);
+    
+    use_object_mesh = isstruct(object_mesh) && options.output.SBMLSpatialUseAnalyticMeshes;
+    if use_object_mesh
+        FV = object_mesh;
+        if options.output.SBMLFlipXToAlign
+            % Flip in X to align with image output
+            % FV.vertices(:, 1) = size(object.img, 2) + 1 - FV.vertices(:, 1);
+            max_size_voxels = size(options.cell);
+            max_size_voxels_xyz = max_size_voxels([2, 1, 3]);
+            max_size = max_size_voxels_xyz .* options.resolution.cubic;
+            FV.vertices(:, 1) = max_size_voxels_xyz(1) - (FV.vertices(:, 1) - 1);
+            FV.faces(:, 2:3) = FV.faces(:, [3, 2]);
+        end
+    else
+        %D. Sullivan 11/30/14
+        %This is being replaced in favor of the iso2mesh software
+        %NOTE: This adds a dependency that we may not want - we should discuss
+        %FV = getMeshPoints(image_to_contour);
+        try 
+            % warning('makeIso2mesh temporarily disabled because it is not working by default'); error();
+            FV = makeIso2mesh(image_to_contour);
+        catch
+            warning(['The iso2mesh package was not found.',...
+                'We recommend using this package for compact high-quality meshes.',...
+                'Proceeding with standard CellOrganizer method for meshing']);
+            FV = getMeshPoints(image_to_contour, [], options.output.SBMLDownsampling, options);
+        end
+        if size(FV.faces,2)>3
+            FV.faces = FV.faces(:,1:3);
+        end
     end
     
     ParaObjectNode.setAttribute([s,'pointIndexLength'], ...
         num2str(prod(size(FV.faces))));
-    
-    %D. Sullivan 12/2/14 - this creates a slightly larger CP, or whatever
-    %your external most layer is to ensure that the internal objects fall
-    %within them
-    param.adjustsize = 1;
-    if object.ordinal==1 && param.adjustsize
-        param = ml_initparam(param,struct('adjustscaleCP',1.05));
-%         tmpverts = FV.vertices.*1.1;
-        tmpverts = FV.vertices.*param.adjustscaleCP;
-        object.img = imresize(object.img,param.adjustscaleCP);
-        object.img = tp_stretch3d(object.img,floor(size(object.img,3)*param.adjustscaleCP));
-        %need to shift the size adjusted vertices to the correct postions. 
-        FV.vertices = tmpverts-repmat(max(tmpverts-FV.vertices)/2,size(tmpverts,1),1);
-%         FV.vertices = FV.vertices+1;
-    elseif object.ordinal==2 && param.adjustsize
-        param = ml_initparam(param,struct('adjustscaleNU',0.95));
-        tmpverts = FV.vertices.*param.adjustscaleNU;
-        object.img = imresize(object.img,param.adjustscaleNU);
-        object.img = tp_stretch3d(object.img,floor(size(object.img,3)*param.adjustscaleNU));
-        %need to shift the size adjusted vertices to the correct postions. 
-        FV.vertices = tmpverts-repmat(max(tmpverts-FV.vertices)/2,size(tmpverts,1),1);
-    end
     
     %D. Sullivan 10/23/14
     %The mesh should be centered to fall in the range of the image.
@@ -138,33 +179,30 @@ for i = 1:length(meshData.list)
             'FV' object.name '_meshdata.mat'])
     end
     
-    %SpatialPoints == FV.vertices
-    %icaoberg COMMENT: ordinal is set to one because you only want to keep track of
-    %the indices corresponding to the largest object, in this case the
-    %cell. Besides the SBML schema only allows one instance of
-    %SpatialPoints
-    if object.ordinal==1
-        SpatialPointsNode = docNode.createElement([s,'spatialPoints']);
-        SpatialPointsNode.setAttribute([s,'compression'], 'uncompressed' );
-        SpatialPointsNode.setAttribute([s,'arrayDataLength'], ...
-            num2str(prod(size(FV.vertices))) );
-        
-        %icaoberg - for debugging purposes
-        %vertices = docNode.createTextNode( mat2str(zeros(2,2)) );
-        
-        vertices = docNode.createTextNode( mat2SBMLArrayData(FV.vertices) );
-        SpatialPointsNode.appendChild(vertices);
-        ParaGeometryNode.appendChild(SpatialPointsNode);
-    end
-    
     %Parametric Objects == FV.faces
-    %icaoberg - for debugging purposes
-    faces = docNode.createTextNode( mat2SBMLArrayData(FV.faces) );
+    %faces = docNode.createTextNode( mat2SBMLArrayData(FV.faces) );
+    % All meshes share one SpatialPoints, so offset by the number of vertices in previous meshes
+    faces = docNode.createTextNode( [sprintf('\n'), ...
+        mat2SBMLArrayData(FV.faces-1+size(all_vertices, 1), false), sprintf('\n')] );
+    
+    %SpatialPoints
+    all_vertices = [all_vertices; FV.vertices];
    
     ParaObjectNode.appendChild(faces);
     ListOfParaObjectsNode.appendChild(ParaObjectNode);
 end
 
+%SpatialPoints
+SpatialPointsNode = docNode.createElement([s,'spatialPoints']);
+SpatialPointsNode.setAttribute([s,'compression'], 'uncompressed' );
+SpatialPointsNode.setAttribute([s,'arrayDataLength'], ...
+    num2str(prod(size(all_vertices))) );
+vertices = docNode.createTextNode( [sprintf('\n'), ...
+    mat2SBMLArrayData(all_vertices, false), sprintf('\n')] );
+SpatialPointsNode.appendChild(vertices);
+ParaGeometryNode.appendChild(SpatialPointsNode);
+
 %wrapperNode.appendChild(ListOfCompartments);
 ParaGeometryNode.appendChild(ListOfParaObjectsNode);
 geometryDefNode.appendChild(ParaGeometryNode);
+

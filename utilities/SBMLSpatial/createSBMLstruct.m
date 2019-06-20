@@ -84,6 +84,9 @@ end
 %     primitive.(modelclass).list.scale = struct;
 % end
 
+% model.proteinModel.cytonuclearflag default is said to be 'all' in slml2img comments but 'cyto' in demo comments, and options.cytonuclearflag defaults to 'cyto' in get_cellorganizer_default_parameters.m
+model = ml_initparam(model,struct('cytonuclearflag','cyto'));
+
 %Determine the ordinal relative to which compartments objects are allowed
 %ordinal is indexed at 0 for extracellular 
 switch model.cytonuclearflag
@@ -98,7 +101,7 @@ switch model.cytonuclearflag
         %because it allows objects to directly overlap.
         ordinal = 1.5;
     otherwise
-        warning('Unknown ordinal specified for protein pattern, defaulting to 2.');
+        warning('Unrecognized value for cytonuclearflag specified in protein model, setting ordinal to default of 2.');
         ordinal = 2;
 end
 
@@ -127,6 +130,8 @@ for i = 1:size(objsizevec,1)
     primitive.(modelclass).list(i).rotation = objrotvec(currobj,:);%This is scale invarient 
 %     primitive.(modelclass).list(i).scale = objsizevec(currobj,:).*model.resolution;
     primitive.(modelclass).list(i).scale = objsizescaled(currobj,:);%[0.05,0.05,0.04];
+    primitive.(modelclass).list(i).rotationmatrix = squeeze(objrotmat(currobj,:,:));
+    primitive.(modelclass).list(i).covariancematrix = squeeze(objcovmat(currobj,:,:));
     
     
     %D. Sullivan - 11/10/14

@@ -47,41 +47,23 @@ protparam = [cellparam.prot];
 % 
 % toc
 
-if options.verbose; disp( 'Learning object models...' ); end;
-
-if options.verbose; tic; end
-
+disp( 'Learning object models' )
+tic
 proteinmodel.size = gmm_objsizefit(vertcat(protparam.gauss_objsize));
+toc
 
-if options.verbose; toc, end
-
-% if options.verbose; disp( 'Learning protein frequency model...' ); end
-% savedir = './temp/protein_objects_gaussian/object_gaussians';
-% if ~exist(savedir,'dir')
-%     mkdir(savedir);
-% end
-
-if options.verbose; tic; end
-if options.verbose; disp( 'Learning frequency model...' ); end
+disp( 'Learning frequency model' )
+tic
 %D. Sullivan 6/12/13 - changed argument to param struct.
 % model.frequency = getProteinFrequencyModel( savedir );
 proteinmodel.frequency = getProteinFrequencyModel( cellfun(@length, {protparam.gauss_intens}) );
-if options.verbose; toc, end
+toc
 
-if options.verbose; disp( 'Learning object position models...' ); end
-% savedir = './temp/protein_objects_gaussian/object_positions';
-% if ~exist(savedir,'dir')
-%     mkdir(savedir)
-% end
-
-% tic;
-% %D. Sullivan 2/22/13 added param input to objpos_run to pass the
-% %resolution of the prot image
-% % model.position.beta = objpos_run(imgdir,savedir);
-% proteinmodel.position.beta = objpos_run2(param.objposdir, param );
-% toc
+disp( 'Learning object position models' )
+tic
 pos = [protparam.pos];
 proteinmodel.position.beta = vertcat(pos.beta);
+toc
 
 %D. Sullivan 2/22/13 also need to save the resolutions of the models 
 %D. Sullivan 6/12/13 added adjustment for resolution formerly dealt with in
@@ -92,7 +74,6 @@ if isfield(options.model,'proteinUpsampleZ')
     options.model.protein_resolution(3) = options.model.protein_resolution(3)/options.model.proteinUpsampleZ;
 end
 proteinmodel.resolution = options.model.protein_resolution;
-
 proteinmodel.class = 'object';
 
 end
@@ -238,7 +219,6 @@ for i=1:max_xbin
     end
 end
 
-
 % dpsulliv 8/7/12 added max_xbin as a variable
 % x = .5:14.5;
 xbin = .5:max_xbin-0.5;
@@ -320,7 +300,7 @@ if nargin == 4
     verbose = false;
     debug = false;
 elseif nargin > 5
-    error('CellOrganizer: Wrong number of input arguments');
+    error('Wrong number of input arguments');
 else
     try
         verbose = param.verbose;

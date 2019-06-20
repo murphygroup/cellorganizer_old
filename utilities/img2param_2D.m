@@ -42,6 +42,7 @@ options.model.resolution = options.model.resolution.*options.downsampling;
 
 options = set_default_options(options);
 
+disp('Loading images');
 imdna = loadImage(imdna_path, options.downsampling);
 imcell = loadImage(imcell_path, options.downsampling);
 improt = loadImage(improt_path, options.downsampling);
@@ -49,9 +50,23 @@ immask = loadImage(immask_path, options.downsampling);
 
 param.imsize = size(imdna);
 
-%Do the segmentation
+disp('Segmenting image');
 savefile = [savedir filesep 'seg.mat'];
 if ~exist(savefile, 'file')
+    contrast_stretch_image = @(x)(imadjust(x,stretchlim(x),[]));
+    
+    is_it_contrast_stretchable = @(x)(strcmpi(class(x),'uint8') && ...
+        numel(unique(x)) == 2 );
+    
+    if is_it_contrast_stretchable(imdna)
+        disp('Contrast stretching nuclear membrane image');
+        imdna = contrast_stretch_image( imdna );
+    end
+    
+    if is_it_contrast_stretchable(imcell)
+        disp('Contrast stretching cell membrane image');
+        imcell = contrast_stretch_image( imcell );
+    end
     
     [seg_dna, seg_cell] = seg_cell_and_nucleus_2D( ...
         imdna, ...
@@ -59,8 +74,27 @@ if ~exist(savefile, 'file')
         immask, ...
         options);
     
-    seg.nuc = seg_dna;
-    seg.cell = seg_cell;
+    disp('Saving segmentations to disk');
+    is_correct = @(x)(strcmpi(class(x),'double') && ...
+        numel(unique(x)) == 2 && max(max(x)) ~= 1 );
+    
+    if ~is_correct( seg_dna )
+        disp('Segmentation should be saved as double. Casting to double.');
+        seg_dna = double(seg_dna);
+        seg_dna(find(seg_dna~=0)) = 1;
+        seg.nuc = seg_dna;
+    else
+        seg.nuc = seg_dna;
+    end
+    
+    if ~is_correct( seg_cell )
+        disp('Segmentation should be saved as double. Casting to double.');
+        seg_cell = double(seg_cell);
+        seg_cell(find(seg_cell~=0)) = 1;
+        seg.cell = seg_cell;
+    else
+        seg.cell = seg_cell;
+    end
     
     save(savefile, 'seg')
 else
@@ -111,7 +145,10 @@ if ~isempty(imcell)
             case 'ratio'
                 options.nuclear_image_filename = imdna_path;
                 options.cell_image_filename = imcell_path;
-                cellfit = ml_parsecell2D({},ml_findmainobj2d_bw(param.seg.cell),ml_findmainobj2d_bw(param.seg.nuc),1,param.imsize,...
+                cellfit = ml_parsecell2D({}, ...
+                    ml_findmainobj2d_bw(param.seg.cell), ...
+                    ml_findmainobj2d_bw(param.seg.nuc), ... 
+                    1,param.imsize,...
                     {'da','nucarea','nuccenter','nucmangle','nuchitpts',...
                     'nuccontour','nucellhitpts','nucdist','nucelldist','nucecc',...
                     'cellarea','cellcenter','cellmangle','cellcontour',...
@@ -153,7 +190,6 @@ else
 end
 param.prot.procimage = procimage;
 
-
 %Now compute the protein models.
 if ~isempty(improt)
     savefile = [savedir filesep 'prot.mat'];
@@ -167,6 +203,9 @@ if ~isempty(improt)
             case 'gmm'
                 if ~isfield(options, 'ml_objgaussmix')
                     options.ml_objgaussmix = [];
+                end
+                if options.display
+                    options.ml_objgaussmix.isshow = true;
                 end
                 prot = img2protfit_2D(procimage, options.ml_objgaussmix);
             case 'network'
